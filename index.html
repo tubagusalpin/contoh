@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SCADA Tangki Air</title>
+
+<style>
+
+body{
+    background:#08111f;
+    color:white;
+    font-family:Segoe UI, sans-serif;
+    margin:0;
+    padding:30px;
+}
+
+.container{
+    display:flex;
+    gap:40px;
+    align-items:center;
+}
+
+.panel{
+    width:280px;
+}
+
+.card{
+    border:1px solid #1e3a5f;
+    padding:15px;
+    margin-bottom:15px;
+    border-radius:10px;
+    background:#0c1728;
+}
+
+.value{
+    font-size:32px;
+    color:#00d4ff;
+    font-weight:bold;
+}
+
+.status{
+    padding:8px;
+    text-align:center;
+    border-radius:8px;
+    font-weight:bold;
+}
+
+.on{
+    background:#00d26a;
+    color:black;
+}
+
+.off{
+    background:#ff4b4b;
+}
+
+svg{
+    background:#0c1728;
+    border:1px solid #1e3a5f;
+    border-radius:15px;
+}
+
+.water{
+    transition:all 1s ease;
+}
+
+.pump-on{
+    fill:#00d26a;
+}
+
+.pump-off{
+    fill:#555;
+}
+
+.valve-open{
+    fill:#00d26a;
+}
+
+.valve-close{
+    fill:#ff4444;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>SCADA MONITORING TANGKI AIR</h2>
+
+<div class="container">
+
+<svg width="850" height="450">
+
+    <!-- TANK -->
+
+    <rect
+        x="100"
+        y="50"
+        width="220"
+        height="280"
+        rx="12"
+        fill="none"
+        stroke="#4aa3ff"
+        stroke-width="4"
+    />
+
+    <!-- WATER -->
+
+    <rect
+        id="water"
+        class="water"
+        x="100"
+        y="190"
+        width="220"
+        height="140"
+        fill="#1f8fff"
+        opacity="0.85"
+    />
+
+    <!-- LEVEL TEXT -->
+
+    <text
+        id="levelText"
+        x="170"
+        y="180"
+        fill="white"
+        font-size="28"
+        font-weight="bold">
+        50%
+    </text>
+
+    <!-- PIPE -->
+
+    <rect
+        x="320"
+        y="175"
+        width="180"
+        height="25"
+        fill="#bdbdbd"
+    />
+
+    <!-- VALVE -->
+
+    <circle
+        id="valve"
+        cx="430"
+        cy="188"
+        r="30"
+        class="valve-open"
+    />
+
+    <line
+        x1="410"
+        y1="168"
+        x2="450"
+        y2="208"
+        stroke="white"
+        stroke-width="4"
+    />
+
+    <line
+        x1="450"
+        y1="168"
+        x2="410"
+        y2="208"
+        stroke="white"
+        stroke-width="4"
+    />
+
+    <!-- PIPE -->
+
+    <rect
+        x="500"
+        y="175"
+        width="80"
+        height="25"
+        fill="#bdbdbd"
+    />
+
+    <!-- PUMP -->
+
+    <g id="pump">
+
+        <rect
+            x="580"
+            y="140"
+            width="120"
+            height="90"
+            rx="10"
+            class="pump-on"
+        />
+
+        <circle
+            cx="640"
+            cy="185"
+            r="25"
+            fill="#0c1728"
+        />
+
+        <circle
+            cx="640"
+            cy="185"
+            r="12"
+            fill="white"
+        />
+
+    </g>
+
+    <!-- OUTLET -->
+
+    <rect
+        x="700"
+        y="175"
+        width="100"
+        height="25"
+        fill="#bdbdbd"
+    />
+
+    <text
+        x="610"
+        y="120"
+        fill="white"
+        font-size="20">
+        POMPA
+    </text>
+
+    <text
+        x="400"
+        y="140"
+        fill="white"
+        font-size="20">
+        VALVE
+    </text>
+
+</svg>
+
+<div class="panel">
+
+    <div class="card">
+        <h3>Level Air</h3>
+        <div class="value" id="levelValue">50%</div>
+    </div>
+
+    <div class="card">
+        <h3>Volume</h3>
+        <div class="value">1007 L</div>
+    </div>
+
+    <div class="card">
+        <h3>Status Pompa</h3>
+        <div id="pumpStatus" class="status on">
+            ON
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+// simulasi realtime
+
+let level = 50;
+
+setInterval(()=>{
+
+    level += (Math.random()*10)-5;
+
+    if(level > 95) level = 95;
+    if(level < 10) level = 10;
+
+    document.getElementById("levelValue").innerHTML =
+        Math.round(level)+"%";
+
+    document.getElementById("levelText").innerHTML =
+        Math.round(level)+"%";
+
+    let waterHeight = level * 2.8;
+
+    document.getElementById("water")
+        .setAttribute("height", waterHeight);
+
+    document.getElementById("water")
+        .setAttribute("y", 330-waterHeight);
+
+    const pump = document.querySelector("#pump rect");
+    const valve = document.getElementById("valve");
+    const status = document.getElementById("pumpStatus");
+
+    if(level < 30){
+
+        pump.setAttribute("class","pump-on");
+        valve.setAttribute("class","valve-open");
+
+        status.innerHTML="ON";
+        status.className="status on";
+
+    }else{
+
+        pump.setAttribute("class","pump-off");
+        valve.setAttribute("class","valve-close");
+
+        status.innerHTML="OFF";
+        status.className="status off";
+    }
+
+},1500);
+
+</script>
+
+</body>
+</html>
