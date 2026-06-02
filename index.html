@@ -2,84 +2,49 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>SCADA Tangki Air</title>
+<title>SCADA Tank</title>
 
 <style>
 
 body{
-    background:#08111f;
-    color:white;
-    font-family:Segoe UI, sans-serif;
+    background:#07131f;
     margin:0;
     padding:30px;
-}
-
-.container{
-    display:flex;
-    gap:40px;
-    align-items:center;
-}
-
-.panel{
-    width:280px;
-}
-
-.card{
-    border:1px solid #1e3a5f;
-    padding:15px;
-    margin-bottom:15px;
-    border-radius:10px;
-    background:#0c1728;
-}
-
-.value{
-    font-size:32px;
-    color:#00d4ff;
-    font-weight:bold;
-}
-
-.status{
-    padding:8px;
-    text-align:center;
-    border-radius:8px;
-    font-weight:bold;
-}
-
-.on{
-    background:#00d26a;
-    color:black;
-}
-
-.off{
-    background:#ff4b4b;
+    font-family:Segoe UI;
+    color:white;
 }
 
 svg{
-    background:#0c1728;
-    border:1px solid #1e3a5f;
-    border-radius:15px;
+    width:100%;
+    max-width:1200px;
 }
 
-.water{
+#water{
     transition:all 1s ease;
 }
 
-.pump-on{
-    fill:#00d26a;
+.flow{
+    stroke-dasharray:12;
+    animation:flow 1s linear infinite;
 }
 
-.pump-off{
-    fill:#555;
+@keyframes flow{
+    to{
+        stroke-dashoffset:-24;
+    }
 }
 
-.valve-open{
-    fill:#00d26a;
+.pump-rotate{
+    animation:spin 2s linear infinite;
+    transform-origin:center;
+    transform-box:fill-box;
 }
 
-.valve-close{
-    fill:#ff4444;
+@keyframes spin{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
 }
 
 </style>
@@ -87,227 +52,276 @@ svg{
 
 <body>
 
-<h2>SCADA MONITORING TANGKI AIR</h2>
+<h2>SCADA WATER TANK</h2>
 
-<div class="container">
+<svg viewBox="0 0 1200 600">
 
-<svg width="850" height="450">
+<!-- PIPE -->
 
-    <!-- TANK -->
+<line
+x1="430"
+y1="300"
+x2="1020"
+y2="300"
+stroke="#cfd8dc"
+stroke-width="18"
+stroke-linecap="round"
+/>
 
+<line
+class="flow"
+x1="430"
+y1="300"
+x2="1020"
+y2="300"
+stroke="#00e5ff"
+stroke-width="4"
+/>
+
+<!-- TANK -->
+
+<ellipse
+cx="220"
+cy="120"
+rx="120"
+ry="35"
+fill="#1f2d3a"
+stroke="#8cb4ff"
+stroke-width="4"
+/>
+
+<rect
+x="100"
+y="120"
+width="240"
+height="250"
+fill="#162433"
+stroke="#8cb4ff"
+stroke-width="4"
+/>
+
+<ellipse
+cx="220"
+cy="370"
+rx="120"
+ry="35"
+fill="#162433"
+stroke="#8cb4ff"
+stroke-width="4"
+/>
+
+<!-- WATER -->
+
+<clipPath id="tankClip">
     <rect
-        x="100"
-        y="50"
-        width="220"
-        height="280"
-        rx="12"
-        fill="none"
-        stroke="#4aa3ff"
-        stroke-width="4"
-    />
+    x="100"
+    y="120"
+    width="240"
+    height="250"/>
+</clipPath>
 
-    <!-- WATER -->
-
+<g clip-path="url(#tankClip)">
     <rect
-        id="water"
-        class="water"
-        x="100"
-        y="190"
-        width="220"
-        height="140"
-        fill="#1f8fff"
-        opacity="0.85"
-    />
+    id="water"
+    x="100"
+    y="220"
+    width="240"
+    height="200"
+    fill="#2196f3"/>
+</g>
 
-    <!-- LEVEL TEXT -->
+<!-- TANK LABEL -->
 
-    <text
-        id="levelText"
-        x="170"
-        y="180"
-        fill="white"
-        font-size="28"
-        font-weight="bold">
-        50%
-    </text>
+<text
+x="220"
+y="255"
+text-anchor="middle"
+fill="white"
+font-size="30"
+font-weight="bold"
+id="levelText">
+75%
+</text>
 
-    <!-- PIPE -->
+<!-- OUTLET -->
 
-    <rect
-        x="320"
-        y="175"
-        width="180"
-        height="25"
-        fill="#bdbdbd"
-    />
+<rect
+x="340"
+y="285"
+width="90"
+height="30"
+fill="#cfd8dc"
+/>
 
-    <!-- VALVE -->
+<!-- VALVE -->
 
-    <circle
-        id="valve"
-        cx="430"
-        cy="188"
-        r="30"
-        class="valve-open"
-    />
+<g id="valve">
 
-    <line
-        x1="410"
-        y1="168"
-        x2="450"
-        y2="208"
-        stroke="white"
-        stroke-width="4"
-    />
+<circle
+cx="520"
+cy="300"
+r="45"
+fill="#d32f2f"
+stroke="#eceff1"
+stroke-width="4"
+/>
 
-    <line
-        x1="450"
-        y1="168"
-        x2="410"
-        y2="208"
-        stroke="white"
-        stroke-width="4"
-    />
+<line
+x1="490"
+y1="270"
+x2="550"
+y2="330"
+stroke="white"
+stroke-width="6"
+/>
 
-    <!-- PIPE -->
+<line
+x1="550"
+y1="270"
+x2="490"
+y2="330"
+stroke="white"
+stroke-width="6"
+/>
 
-    <rect
-        x="500"
-        y="175"
-        width="80"
-        height="25"
-        fill="#bdbdbd"
-    />
+<rect
+x="512"
+y="210"
+width="16"
+height="50"
+fill="#eceff1"
+/>
 
-    <!-- PUMP -->
+<circle
+cx="520"
+cy="190"
+r="25"
+fill="#ffca28"
+/>
 
-    <g id="pump">
+</g>
 
-        <rect
-            x="580"
-            y="140"
-            width="120"
-            height="90"
-            rx="10"
-            class="pump-on"
-        />
+<!-- PUMP -->
 
-        <circle
-            cx="640"
-            cy="185"
-            r="25"
-            fill="#0c1728"
-        />
+<g id="pump">
 
-        <circle
-            cx="640"
-            cy="185"
-            r="12"
-            fill="white"
-        />
+<!-- housing -->
 
-    </g>
+<path
+d="
+M700 250
+Q740 220 780 250
+L820 250
+Q860 250 860 300
+Q860 350 820 350
+L780 350
+Q740 380 700 350
+Q660 350 660 300
+Q660 250 700 250
+"
+fill="#1565c0"
+stroke="#eceff1"
+stroke-width="4"
+/>
 
-    <!-- OUTLET -->
+<!-- impeller -->
 
-    <rect
-        x="700"
-        y="175"
-        width="100"
-        height="25"
-        fill="#bdbdbd"
-    />
+<circle
+cx="760"
+cy="300"
+r="45"
+fill="#0d47a1"
+/>
 
-    <text
-        x="610"
-        y="120"
-        fill="white"
-        font-size="20">
-        POMPA
-    </text>
+<g id="impeller" class="pump-rotate">
 
-    <text
-        x="400"
-        y="140"
-        fill="white"
-        font-size="20">
-        VALVE
-    </text>
+<line x1="760" y1="260" x2="760" y2="340"
+stroke="white" stroke-width="5"/>
+
+<line x1="720" y1="300" x2="800" y2="300"
+stroke="white" stroke-width="5"/>
+
+<line x1="732" y1="272" x2="788" y2="328"
+stroke="white" stroke-width="5"/>
+
+<line x1="788" y1="272" x2="732" y2="328"
+stroke="white" stroke-width="5"/>
+
+</g>
+
+<!-- motor -->
+
+<rect
+x="860"
+y="250"
+width="110"
+height="100"
+rx="12"
+fill="#455a64"
+stroke="#eceff1"
+stroke-width="4"
+/>
+
+<line x1="880" y1="260" x2="880" y2="340"
+stroke="#90a4ae" stroke-width="3"/>
+
+<line x1="900" y1="260" x2="900" y2="340"
+stroke="#90a4ae" stroke-width="3"/>
+
+<line x1="920" y1="260" x2="920" y2="340"
+stroke="#90a4ae" stroke-width="3"/>
+
+<line x1="940" y1="260" x2="940" y2="340"
+stroke="#90a4ae" stroke-width="3"/>
+
+</g>
+
+<!-- STATUS -->
+
+<text
+x="140"
+y="450"
+fill="#00e676"
+font-size="28">
+PUMP : ON
+</text>
+
+<text
+x="140"
+y="490"
+fill="#00e676"
+font-size="28">
+VALVE : OPEN
+</text>
 
 </svg>
 
-<div class="panel">
-
-    <div class="card">
-        <h3>Level Air</h3>
-        <div class="value" id="levelValue">50%</div>
-    </div>
-
-    <div class="card">
-        <h3>Volume</h3>
-        <div class="value">1007 L</div>
-    </div>
-
-    <div class="card">
-        <h3>Status Pompa</h3>
-        <div id="pumpStatus" class="status on">
-            ON
-        </div>
-    </div>
-
-</div>
-
-</div>
-
 <script>
 
-// simulasi realtime
-
-let level = 50;
+let level = 75;
 
 setInterval(()=>{
 
     level += (Math.random()*10)-5;
 
-    if(level > 95) level = 95;
-    if(level < 10) level = 10;
+    if(level>95) level=95;
+    if(level<20) level=20;
 
-    document.getElementById("levelValue").innerHTML =
-        Math.round(level)+"%";
+    const h = level*2.5;
 
-    document.getElementById("levelText").innerHTML =
-        Math.round(level)+"%";
+    document
+        .getElementById("water")
+        .setAttribute("height",h);
 
-    let waterHeight = level * 2.8;
+    document
+        .getElementById("water")
+        .setAttribute("y",370-h);
 
-    document.getElementById("water")
-        .setAttribute("height", waterHeight);
+    document
+        .getElementById("levelText")
+        .textContent=Math.round(level)+"%";
 
-    document.getElementById("water")
-        .setAttribute("y", 330-waterHeight);
-
-    const pump = document.querySelector("#pump rect");
-    const valve = document.getElementById("valve");
-    const status = document.getElementById("pumpStatus");
-
-    if(level < 30){
-
-        pump.setAttribute("class","pump-on");
-        valve.setAttribute("class","valve-open");
-
-        status.innerHTML="ON";
-        status.className="status on";
-
-    }else{
-
-        pump.setAttribute("class","pump-off");
-        valve.setAttribute("class","valve-close");
-
-        status.innerHTML="OFF";
-        status.className="status off";
-    }
-
-},1500);
+},2000);
 
 </script>
 
