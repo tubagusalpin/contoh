@@ -1,327 +1,609 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SCADA Tank</title>
+<title>Water Tank SCADA Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI;
+}
+
 body{
-    background:#07131f;
-    margin:0;
-    padding:30px;
-    font-family:Segoe UI;
-    color:white;
+background:#071321;
+color:white;
 }
 
-svg{
-    width:100%;
-    max-width:1200px;
+/* LOGIN */
+
+#loginPage{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
 }
 
-#water{
-    transition:all 1s ease;
+.login-box{
+width:400px;
+background:#0d1f33;
+padding:30px;
+border-radius:15px;
+box-shadow:0 0 20px #00bfff50;
 }
 
-.flow{
-    stroke-dasharray:12;
-    animation:flow 1s linear infinite;
+.login-box h1{
+text-align:center;
+margin-bottom:20px;
+color:#00cfff;
 }
 
-@keyframes flow{
-    to{
-        stroke-dashoffset:-24;
-    }
+.login-box input{
+width:100%;
+padding:12px;
+margin:10px 0;
+background:#15283d;
+border:none;
+color:white;
 }
 
-.pump-rotate{
-    animation:spin 2s linear infinite;
-    transform-origin:center;
-    transform-box:fill-box;
+.login-box button{
+width:100%;
+padding:12px;
+background:#00cfff;
+border:none;
+cursor:pointer;
+font-weight:bold;
 }
 
-@keyframes spin{
-    from{transform:rotate(0deg);}
-    to{transform:rotate(360deg);}
+/* DASHBOARD */
+
+#dashboard{
+display:none;
+}
+
+.header{
+height:70px;
+background:#0c1d31;
+display:flex;
+align-items:center;
+padding-left:25px;
+font-size:24px;
+font-weight:bold;
+color:#00d9ff;
+}
+
+.container{
+display:flex;
+}
+
+.sidebar{
+width:220px;
+background:#091726;
+height:calc(100vh - 70px);
+padding-top:20px;
+}
+
+.sidebar ul{
+list-style:none;
+}
+
+.sidebar li{
+padding:15px 20px;
+cursor:pointer;
+}
+
+.sidebar li:hover{
+background:#00cfff20;
+}
+
+.main{
+flex:1;
+padding:20px;
+overflow:auto;
+}
+
+/* PROCESS */
+
+.process{
+background:#10243b;
+padding:20px;
+border-radius:15px;
+margin-bottom:20px;
+}
+
+.process svg{
+width:100%;
+height:320px;
+}
+
+/* KPI */
+
+.cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:15px;
+margin-bottom:20px;
+}
+
+.card{
+background:#10243b;
+padding:20px;
+border-radius:15px;
+text-align:center;
+}
+
+.card h2{
+color:#00dfff;
+margin-top:10px;
+}
+
+/* CHARTS */
+
+.charts{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:20px;
+margin-bottom:20px;
+}
+
+.chart-box{
+background:#10243b;
+padding:15px;
+border-radius:15px;
+}
+
+/* TABLE */
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #1f3c5e;
+text-align:center;
+}
+
+.table-box{
+background:#10243b;
+padding:15px;
+border-radius:15px;
+margin-top:20px;
+}
+
+.buttons{
+margin-top:15px;
+display:flex;
+gap:10px;
+}
+
+button{
+padding:10px 20px;
+border:none;
+cursor:pointer;
+border-radius:8px;
+background:#00dfff;
+font-weight:bold;
+}
+
+.water{
+transition:1s;
 }
 
 </style>
 </head>
-
 <body>
 
-<h2>SCADA WATER TANK</h2>
+<!-- LOGIN -->
 
-<svg viewBox="0 0 1200 600">
+<div id="loginPage">
+
+<div class="login-box">
+
+<h1>SCADA LOGIN</h1>
+
+<input type="text" id="user" placeholder="Username">
+
+<input type="password" id="pass" placeholder="Password">
+
+<button onclick="login()">LOGIN</button>
+
+</div>
+
+</div>
+
+<!-- DASHBOARD -->
+
+<div id="dashboard">
+
+<div class="header">
+WATER TANK SCADA MONITORING
+</div>
+
+<div class="container">
+
+<div class="sidebar">
+
+<ul>
+<li>🏠 Dashboard</li>
+<li>🛢 Monitoring</li>
+<li>📊 Analytics</li>
+<li>📋 Reports</li>
+<li>⚙ Settings</li>
+<li onclick="logout()">🚪 Logout</li>
+</ul>
+
+</div>
+
+<div class="main">
+
+<!-- PROCESS -->
+
+<div class="process">
+
+<svg viewBox="0 0 1200 300">
+
+<!-- TANK 1 -->
+
+<rect x="50" y="30" width="170" height="220"
+fill="#d5d5d5"
+stroke="#888"
+stroke-width="4"
+rx="15"/>
+
+<rect id="tank1"
+x="55"
+y="180"
+width="160"
+height="65"
+fill="#00bfff"
+class="water"/>
+
+<text x="90" y="20" fill="white">
+Tank 1
+</text>
 
 <!-- PIPE -->
 
-<line
-x1="430"
-y1="300"
-x2="1020"
-y2="300"
-stroke="#cfd8dc"
-stroke-width="18"
-stroke-linecap="round"
-/>
-
-<line
-class="flow"
-x1="430"
-y1="300"
-x2="1020"
-y2="300"
-stroke="#00e5ff"
-stroke-width="4"
-/>
-
-<!-- TANK -->
-
-<ellipse
-cx="220"
-cy="120"
-rx="120"
-ry="35"
-fill="#1f2d3a"
-stroke="#8cb4ff"
-stroke-width="4"
-/>
-
-<rect
-x="100"
-y="120"
-width="240"
-height="250"
-fill="#162433"
-stroke="#8cb4ff"
-stroke-width="4"
-/>
-
-<ellipse
-cx="220"
-cy="370"
-rx="120"
-ry="35"
-fill="#162433"
-stroke="#8cb4ff"
-stroke-width="4"
-/>
-
-<!-- WATER -->
-
-<clipPath id="tankClip">
-    <rect
-    x="100"
-    y="120"
-    width="240"
-    height="250"/>
-</clipPath>
-
-<g clip-path="url(#tankClip)">
-    <rect
-    id="water"
-    x="100"
-    y="220"
-    width="240"
-    height="200"
-    fill="#2196f3"/>
-</g>
-
-<!-- TANK LABEL -->
-
-<text
-x="220"
-y="255"
-text-anchor="middle"
-fill="white"
-font-size="30"
-font-weight="bold"
-id="levelText">
-75%
-</text>
-
-<!-- OUTLET -->
-
-<rect
-x="340"
-y="285"
-width="90"
-height="30"
-fill="#cfd8dc"
-/>
-
-<!-- VALVE -->
-
-<g id="valve">
-
-<circle
-cx="520"
-cy="300"
-r="45"
-fill="#d32f2f"
-stroke="#eceff1"
-stroke-width="4"
-/>
-
-<line
-x1="490"
-y1="270"
-x2="550"
-y2="330"
-stroke="white"
-stroke-width="6"
-/>
-
-<line
-x1="550"
-y1="270"
-x2="490"
-y2="330"
-stroke="white"
-stroke-width="6"
-/>
-
-<rect
-x="512"
-y="210"
-width="16"
-height="50"
-fill="#eceff1"
-/>
-
-<circle
-cx="520"
-cy="190"
-r="25"
-fill="#ffca28"
-/>
-
-</g>
+<line x1="220"
+y1="140"
+x2="400"
+y2="140"
+stroke="#c0c0c0"
+stroke-width="18"/>
 
 <!-- PUMP -->
 
-<g id="pump">
+<circle id="pump"
+cx="500"
+cy="140"
+r="55"
+fill="#444"/>
 
-<!-- housing -->
-
-<path
-d="
-M700 250
-Q740 220 780 250
-L820 250
-Q860 250 860 300
-Q860 350 820 350
-L780 350
-Q740 380 700 350
-Q660 350 660 300
-Q660 250 700 250
-"
-fill="#1565c0"
-stroke="#eceff1"
-stroke-width="4"
-/>
-
-<!-- impeller -->
-
-<circle
-cx="760"
-cy="300"
-r="45"
-fill="#0d47a1"
-/>
-
-<g id="impeller" class="pump-rotate">
-
-<line x1="760" y1="260" x2="760" y2="340"
-stroke="white" stroke-width="5"/>
-
-<line x1="720" y1="300" x2="800" y2="300"
-stroke="white" stroke-width="5"/>
-
-<line x1="732" y1="272" x2="788" y2="328"
-stroke="white" stroke-width="5"/>
-
-<line x1="788" y1="272" x2="732" y2="328"
-stroke="white" stroke-width="5"/>
-
-</g>
-
-<!-- motor -->
-
-<rect
-x="860"
-y="250"
-width="110"
-height="100"
-rx="12"
-fill="#455a64"
-stroke="#eceff1"
-stroke-width="4"
-/>
-
-<line x1="880" y1="260" x2="880" y2="340"
-stroke="#90a4ae" stroke-width="3"/>
-
-<line x1="900" y1="260" x2="900" y2="340"
-stroke="#90a4ae" stroke-width="3"/>
-
-<line x1="920" y1="260" x2="920" y2="340"
-stroke="#90a4ae" stroke-width="3"/>
-
-<line x1="940" y1="260" x2="940" y2="340"
-stroke="#90a4ae" stroke-width="3"/>
-
-</g>
-
-<!-- STATUS -->
-
-<text
-x="140"
-y="450"
-fill="#00e676"
-font-size="28">
-PUMP : ON
+<text x="485"
+y="150"
+font-size="28"
+fill="white">
+⚙
 </text>
 
-<text
-x="140"
-y="490"
-fill="#00e676"
-font-size="28">
-VALVE : OPEN
+<!-- PIPE -->
+
+<line x1="555"
+y1="140"
+x2="750"
+y2="140"
+stroke="#c0c0c0"
+stroke-width="18"/>
+
+<!-- FLOWMETER -->
+
+<circle cx="650"
+cy="90"
+r="30"
+fill="#222"/>
+
+<text x="630"
+y="95"
+fill="#00ff00">
+FLOW
+</text>
+
+<!-- PIPE -->
+
+<line x1="750"
+y1="140"
+x2="900"
+y2="140"
+stroke="#c0c0c0"
+stroke-width="18"/>
+
+<!-- HORIZONTAL TANK -->
+
+<rect x="900"
+y="80"
+width="250"
+height="120"
+rx="60"
+fill="#d5d5d5"
+stroke="#888"
+stroke-width="4"/>
+
+<rect id="tank2"
+x="905"
+y="140"
+width="240"
+height="55"
+fill="#00bfff"
+class="water"/>
+
+<text x="980"
+y="60"
+fill="white">
+Tank 2
 </text>
 
 </svg>
 
+</div>
+
+<!-- KPI -->
+
+<div class="cards">
+
+<div class="card">
+Level
+<h2 id="levelValue">0%</h2>
+</div>
+
+<div class="card">
+Temperature
+<h2 id="tempValue">0°C</h2>
+</div>
+
+<div class="card">
+Humidity
+<h2 id="humValue">0%</h2>
+</div>
+
+<div class="card">
+Flow
+<h2 id="flowValue">0 L/min</h2>
+</div>
+
+</div>
+
+<!-- CHART -->
+
+<div class="charts">
+
+<div class="chart-box">
+<canvas id="levelChart"></canvas>
+</div>
+
+<div class="chart-box">
+<canvas id="tempChart"></canvas>
+</div>
+
+</div>
+
+<!-- TABLE -->
+
+<div class="table-box">
+
+<h2>Monitoring Data</h2>
+
+<br>
+
+<table id="dataTable">
+
+<thead>
+<tr>
+<th>Time</th>
+<th>Level</th>
+<th>Temp</th>
+<th>Humidity</th>
+<th>Flow</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+<div class="buttons">
+
+<button onclick="exportExcel()">
+Export Excel
+</button>
+
+<button onclick="exportPDF()">
+Export PDF
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
 <script>
 
-let level = 75;
+function login(){
+
+let u=document.getElementById("user").value;
+let p=document.getElementById("pass").value;
+
+if(u==="admin" && p==="admin123"){
+
+document.getElementById("loginPage").style.display="none";
+document.getElementById("dashboard").style.display="block";
+
+}else{
+
+alert("Username atau Password salah");
+
+}
+
+}
+
+function logout(){
+
+location.reload();
+
+}
+
+let labels=[];
+let levelData=[];
+let tempData=[];
+
+const levelChart=new Chart(
+document.getElementById("levelChart"),
+{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:'Level Tank',
+data:levelData
+}]
+}
+}
+);
+
+const tempChart=new Chart(
+document.getElementById("tempChart"),
+{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:'Temperature',
+data:tempData
+}]
+}
+}
+);
+
+let tableData=[];
 
 setInterval(()=>{
 
-    level += (Math.random()*10)-5;
+let level=Math.floor(Math.random()*100);
+let temp=Math.floor(Math.random()*15)+25;
+let hum=Math.floor(Math.random()*30)+50;
+let flow=Math.floor(Math.random()*50)+10;
 
-    if(level>95) level=95;
-    if(level<20) level=20;
+document.getElementById("levelValue").innerHTML=level+"%";
+document.getElementById("tempValue").innerHTML=temp+"°C";
+document.getElementById("humValue").innerHTML=hum+"%";
+document.getElementById("flowValue").innerHTML=flow+" L/min";
 
-    const h = level*2.5;
+document.getElementById("tank1")
+.setAttribute("y",250-(level*2));
 
-    document
-        .getElementById("water")
-        .setAttribute("height",h);
+document.getElementById("tank1")
+.setAttribute("height",level*2);
 
-    document
-        .getElementById("water")
-        .setAttribute("y",370-h);
+document.getElementById("tank2")
+.setAttribute("height",level);
 
-    document
-        .getElementById("levelText")
-        .textContent=Math.round(level)+"%";
+document.getElementById("pump")
+.setAttribute(
+"fill",
+level>50 ? "#00ff66":"#444"
+);
 
-},2000);
+let time=new Date().toLocaleTimeString();
+
+labels.push(time);
+levelData.push(level);
+tempData.push(temp);
+
+if(labels.length>10){
+
+labels.shift();
+levelData.shift();
+tempData.shift();
+
+}
+
+levelChart.update();
+tempChart.update();
+
+tableData.push({
+time,
+level,
+temp,
+hum,
+flow
+});
+
+let row=
+`
+<tr>
+<td>${time}</td>
+<td>${level}%</td>
+<td>${temp}</td>
+<td>${hum}</td>
+<td>${flow}</td>
+</tr>
+`;
+
+document.querySelector("#dataTable tbody")
+.insertAdjacentHTML("afterbegin",row);
+
+},3000);
+
+function exportExcel(){
+
+let ws=XLSX.utils.json_to_sheet(tableData);
+
+let wb=XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(
+wb,
+ws,
+"Monitoring"
+);
+
+XLSX.writeFile(
+wb,
+"Monitoring.xlsx"
+);
+
+}
+
+async function exportPDF(){
+
+const { jsPDF } = window.jspdf;
+
+const doc=new jsPDF();
+
+doc.text(
+"WATER TANK REPORT",
+20,
+20
+);
+
+doc.save("Report.pdf");
+
+}
 
 </script>
 
