@@ -1,611 +1,1322 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Water Tank SCADA Dashboard</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+<title>SCADA Smart Water Tank — Fuzzy Logic Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Segoe UI;
+:root {
+  --bg-dark: #050c14;
+  --bg-panel: #071220;
+  --bg-card: #0a1a2e;
+  --bg-card2: #0d2040;
+  --border: #1a3a5a;
+  --border-glow: #00aaff33;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --accent3: #ffd600;
+  --danger: #ff4444;
+  --warn: #ff9800;
+  --text-pri: #e0f4ff;
+  --text-sec: #5a8aa0;
+  --text-dim: #2a4a5a;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui: 'Rajdhani', sans-serif;
+  --font-display: 'Orbitron', monospace;
+  --green: #00e676;
+  --blue: #00aaff;
+  --pipe-color: #1a3a5a;
+  --pipe-flow: #00aaff;
+  --water-top: #00b4d8;
+  --water-bot: #023e8a;
 }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg-dark);font-family:var(--font-ui);color:var(--text-pri);overflow:hidden;height:100vh}
 
-body{
-background:#071321;
-color:white;
-}
+/* ─── SCANLINES OVERLAY ─── */
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:9999}
 
-/* LOGIN */
+/* ─── LOGIN PAGE ─── */
+#loginPage{position:fixed;inset:0;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column}
+.login-bg{position:absolute;inset:0;overflow:hidden}
+.login-bg canvas{width:100%;height:100%}
+.login-box{position:relative;background:var(--bg-panel);border:1px solid var(--border);border-top:2px solid var(--accent);width:420px;padding:40px;box-shadow:0 0 60px rgba(0,212,255,.1)}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .big{font-family:var(--font-display);font-size:18px;color:var(--accent);letter-spacing:4px}
+.login-logo .sub{font-family:var(--font-mono);font-size:10px;color:var(--text-sec);letter-spacing:3px;margin-top:4px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-family:var(--font-mono);font-size:11px;color:var(--text-sec);letter-spacing:2px;margin-bottom:6px}
+.login-field input{width:100%;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-pri);padding:10px 14px;font-family:var(--font-mono);font-size:13px;outline:none;transition:.2s}
+.login-field input:focus{border-color:var(--accent);box-shadow:0 0 12px rgba(0,212,255,.2)}
+.login-btn{width:100%;background:linear-gradient(90deg,#003a5a,#006688);border:1px solid var(--accent);color:var(--accent);padding:12px;font-family:var(--font-display);font-size:12px;letter-spacing:3px;cursor:pointer;transition:.2s;margin-top:8px}
+.login-btn:hover{background:linear-gradient(90deg,#006688,#00aacc);box-shadow:0 0 20px rgba(0,212,255,.3)}
+.login-err{color:var(--danger);font-family:var(--font-mono);font-size:11px;text-align:center;margin-top:8px;height:16px}
+.login-hint{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center;margin-top:16px}
 
-#loginPage{
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-}
+/* ─── MAIN LAYOUT ─── */
+#mainApp{display:none;height:100vh;flex-direction:column}
+#mainApp.active{display:flex}
 
-.login-box{
-width:400px;
-background:#0d1f33;
-padding:30px;
-border-radius:15px;
-box-shadow:0 0 20px #00bfff50;
-}
+/* ─── TOPBAR ─── */
+.topbar{height:50px;background:var(--bg-panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:20px;flex-shrink:0;position:relative}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.top-logo{font-family:var(--font-display);font-size:12px;color:var(--accent);letter-spacing:3px;white-space:nowrap}
+.top-status{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px}
+.dot-live{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.4)}70%{box-shadow:0 0 0 6px transparent}}
+.top-time{font-family:var(--font-mono);font-size:13px;color:var(--accent);margin-left:auto}
+.top-date{font-family:var(--font-mono);font-size:10px;color:var(--text-sec)}
+.top-user{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-sec);cursor:pointer;padding:4px 10px;border:1px solid var(--border);transition:.2s}
+.top-user:hover{border-color:var(--accent);color:var(--accent)}
+.top-logout{background:none;border:1px solid #ff444455;color:#ff4444;padding:4px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer;letter-spacing:1px;transition:.2s}
+.top-logout:hover{background:#ff444422;box-shadow:0 0 10px rgba(255,68,68,.2)}
 
-.login-box h1{
-text-align:center;
-margin-bottom:20px;
-color:#00cfff;
-}
+/* ─── SIDEBAR ─── */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;background:var(--bg-panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-brand{padding:16px 14px;border-bottom:1px solid var(--border)}
+.sidebar-brand span{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:.15s;font-size:13px;color:var(--text-sec)}
+.nav-item:hover{color:var(--text-pri);background:rgba(0,212,255,.05)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,212,255,.08)}
+.nav-item svg{flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.nav-sep{height:1px;background:var(--border);margin:8px 0}
+.sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:9px;color:var(--text-dim)}
 
-.login-box input{
-width:100%;
-padding:12px;
-margin:10px 0;
-background:#15283d;
-border:none;
-color:white;
-}
+/* ─── CONTENT AREA ─── */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border)}
+.page{display:none;padding:16px;animation:fadeIn .3s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.page-title{font-family:var(--font-display);font-size:13px;color:var(--text-sec);letter-spacing:3px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.page-title::after{content:'';flex:1;height:1px;background:var(--border)}
 
-.login-box button{
-width:100%;
-padding:12px;
-background:#00cfff;
-border:none;
-cursor:pointer;
-font-weight:bold;
-}
+/* ─── GRID LAYOUTS ─── */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.grid-main{display:grid;grid-template-columns:1fr 340px;gap:10px;margin-bottom:12px}
+.grid-bottom{display:grid;grid-template-columns:2fr 1fr;gap:10px}
 
-/* DASHBOARD */
+/* ─── CARD ─── */
+.card{background:var(--bg-card);border:1px solid var(--border);padding:12px 14px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent-card,var(--accent)),transparent);opacity:.4}
+.card-title{font-family:var(--font-mono);font-size:9px;color:var(--text-sec);letter-spacing:2px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.card-title .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
 
-#dashboard{
-display:none;
-}
+/* ─── METRIC CARDS ─── */
+.metric-val{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1;margin-bottom:2px}
+.metric-unit{font-family:var(--font-mono);font-size:10px;color:var(--text-sec)}
+.metric-sub{font-family:var(--font-mono);font-size:10px;margin-top:4px}
+.c-blue{color:var(--accent)}
+.c-green{color:var(--green)}
+.c-warn{color:var(--warn)}
+.c-danger{color:var(--danger)}
+.c-yellow{color:var(--accent3)}
+.c-white{color:var(--text-pri)}
 
-.header{
-height:70px;
-background:#0c1d31;
-display:flex;
-align-items:center;
-padding-left:25px;
-font-size:24px;
-font-weight:bold;
-color:#00d9ff;
-}
+/* ─── BADGE ─── */
+.badge{display:inline-block;padding:2px 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;border-radius:2px}
+.badge-ok{background:#003a1a;color:#00e676;border:1px solid #00e67655}
+.badge-warn{background:#3a2000;color:#ffd600;border:1px solid #ffd60055}
+.badge-danger{background:#3a0000;color:#ff4444;border:1px solid #ff444455}
+.badge-blue{background:#001a3a;color:#00aaff;border:1px solid #00aaff55}
+.badge-off{background:#1a2a3a;color:#5a8aa0;border:1px solid #2a4a5a}
 
-.container{
-display:flex;
-}
+/* ─── SCADA VISUAL ─── */
+.scada-wrap{background:var(--bg-card);border:1px solid var(--border);padding:10px;position:relative}
+.scada-label{font-family:var(--font-mono);font-size:9px;color:var(--text-sec);letter-spacing:2px;margin-bottom:8px}
+#scadaSVG{width:100%;display:block}
 
-.sidebar{
-width:220px;
-background:#091726;
-height:calc(100vh - 70px);
-padding-top:20px;
-}
+/* ─── GAUGE ─── */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center}
+.gauge-num{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--accent);line-height:1;margin-top:-10px}
+.gauge-lbl{font-family:var(--font-mono);font-size:9px;color:var(--text-sec);letter-spacing:2px}
 
-.sidebar ul{
-list-style:none;
-}
+/* ─── PUMP CONTROL ─── */
+.pump-ctrl{display:flex;flex-direction:column;gap:8px}
+.pump-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-dark);border:1px solid var(--border)}
+.pump-name{font-family:var(--font-mono);font-size:11px;color:var(--text-sec);flex:1;letter-spacing:1px}
+.pump-status{font-family:var(--font-mono);font-size:11px;font-weight:600}
+.btn-sm{padding:3px 10px;font-family:var(--font-mono);font-size:10px;border:none;cursor:pointer;letter-spacing:1px;transition:.15s}
+.btn-on{background:#003a1a;color:#00e676;border:1px solid #00e67655}
+.btn-on:hover{background:#004a22}
+.btn-off2{background:#3a0000;color:#ff4444;border:1px solid #ff444455}
+.btn-off2:hover{background:#4a0000}
+.btn-auto{background:#001a3a;color:#00aaff;border:1px solid #00aaff55;padding:4px 12px;font-family:var(--font-mono);font-size:10px;cursor:pointer;letter-spacing:1px;transition:.15s;width:100%}
+.btn-auto:hover{background:#002a5a}
+.btn-auto.active{background:#00aaff;color:#000;font-weight:700}
 
-.sidebar li{
-padding:15px 20px;
-cursor:pointer;
-}
+/* ─── PROGRESS BAR ─── */
+.prog-wrap{height:6px;background:var(--bg-dark);border-radius:3px;overflow:hidden;margin:4px 0}
+.prog-fill{height:100%;border-radius:3px;transition:width .5s}
+.prog-blue{background:linear-gradient(90deg,#005588,#00aaff)}
+.prog-green{background:linear-gradient(90deg,#003a1a,#00e676)}
+.prog-warn{background:linear-gradient(90deg,#3a2000,#ff9800)}
+.prog-danger{background:linear-gradient(90deg,#3a0000,#ff4444)}
 
-.sidebar li:hover{
-background:#00cfff20;
-}
+/* ─── FUZZY DISPLAY ─── */
+.fuzzy-section{margin-top:8px}
+.fuzzy-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-family:var(--font-mono);font-size:10px}
+.fuzzy-name{width:54px;color:var(--text-sec)}
+.fuzzy-bar{flex:1;height:5px;background:var(--bg-dark);border-radius:3px;overflow:hidden}
+.fuzzy-fill{height:100%;border-radius:3px;transition:width .4s}
+.fuzzy-mu{width:28px;text-align:right;color:var(--text-sec)}
 
-.main{
-flex:1;
-padding:20px;
-overflow:auto;
-}
+/* ─── TABLE ─── */
+.data-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px}
+.data-table th{background:var(--bg-dark);color:var(--text-sec);padding:6px 10px;text-align:left;font-size:9px;letter-spacing:2px;border-bottom:1px solid var(--border)}
+.data-table td{padding:5px 10px;border-bottom:1px solid #0d2a3a;color:var(--text-pri);font-size:10px}
+.data-table tr:hover td{background:rgba(0,212,255,.03)}
+.table-wrap{max-height:240px;overflow-y:auto}
+.table-wrap::-webkit-scrollbar{width:3px}
+.table-wrap::-webkit-scrollbar-thumb{background:var(--border)}
 
-/* PROCESS */
+/* ─── ALARM ─── */
+.alarm-list{display:flex;flex-direction:column;gap:5px}
+.alarm-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:2px;font-family:var(--font-mono);font-size:10px}
+.alarm-item .a-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.alarm-ok{background:#001a0a;border:1px solid #003a1a;color:#00e676}
+.alarm-warn{background:#1a1000;border:1px solid #3a2000;color:#ffd600}
+.alarm-danger{background:#1a0000;border:1px solid #3a0000;color:#ff4444;animation:flash .8s infinite}
+@keyframes flash{50%{opacity:.6}}
 
-.process{
-background:#10243b;
-padding:20px;
-border-radius:15px;
-margin-bottom:20px;
-}
+/* ─── THRESHOLD CONFIG ─── */
+.thr-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0d2040;font-family:var(--font-mono);font-size:11px}
+.thr-label{color:var(--text-sec)}
+.thr-range{color:var(--text-pri)}
 
-.process svg{
-width:100%;
-height:320px;
-}
+/* ─── CHART CONTAINER ─── */
+.chart-box{position:relative;height:160px}
+.chart-box2{position:relative;height:180px}
 
-/* KPI */
+/* ─── EXPORT BUTTONS ─── */
+.action-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.btn-export{padding:7px 16px;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;border:1px solid;transition:.15s;background:transparent}
+.btn-csv{color:var(--green);border-color:#00e67655}
+.btn-csv:hover{background:#00e67620}
+.btn-pdf{color:var(--accent3);border-color:#ffd60055}
+.btn-pdf:hover{background:#ffd60020}
+.btn-clear{color:var(--danger);border-color:#ff444455}
+.btn-clear:hover{background:#ff444420}
 
-.cards{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-gap:15px;
-margin-bottom:20px;
-}
+/* ─── SIMULATION BUTTONS ─── */
+.sim-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.btn-sim{padding:4px 12px;font-family:var(--font-mono);font-size:10px;border:none;cursor:pointer;letter-spacing:1px;transition:.15s;border-radius:2px}
+.btn-sim-danger{background:#ff444433;color:#ff4444;border:1px solid #ff444466}
+.btn-sim-warn{background:#ff980033;color:#ff9800;border:1px solid #ff980066}
+.btn-sim-ok{background:#00e67633;color:#00e676;border:1px solid #00e67666}
+.btn-sim-blue{background:#00aaff33;color:#00aaff;border:1px solid #00aaff66}
 
-.card{
-background:#10243b;
-padding:20px;
-border-radius:15px;
-text-align:center;
-}
+/* ─── REKAP STATS ─── */
+.rekap-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.rekap-card{background:var(--bg-dark);border:1px solid var(--border);padding:8px 10px;text-align:center}
+.rekap-num{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--accent)}
+.rekap-lbl{font-family:var(--font-mono);font-size:9px;color:var(--text-sec);letter-spacing:1px;margin-top:2px}
 
-.card h2{
-color:#00dfff;
-margin-top:10px;
-}
+/* ─── SETTINGS ─── */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.setting-row label{font-family:var(--font-mono);font-size:11px;color:var(--text-sec);letter-spacing:1px}
+.setting-input{background:var(--bg-dark);border:1px solid var(--border);color:var(--text-pri);padding:5px 10px;font-family:var(--font-mono);font-size:12px;width:120px;outline:none}
+.setting-input:focus{border-color:var(--accent)}
+.toggle-wrap{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px}
+.toggle{width:36px;height:18px;background:var(--bg-dark);border:1px solid var(--border);border-radius:9px;cursor:pointer;position:relative;transition:.2s}
+.toggle.on{background:#00aaff33;border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;width:12px;height:12px;background:var(--text-dim);border-radius:50%;top:2px;left:2px;transition:.2s}
+.toggle.on::after{background:var(--accent);left:20px}
 
-/* CHARTS */
+/* ─── NOTIFICATIONS ─── */
+.notif-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto}
+.notif-item{background:var(--bg-dark);border:1px solid var(--border);border-left:3px solid var(--border);padding:10px 12px;font-family:var(--font-mono);font-size:11px}
+.notif-item.notif-ok{border-left-color:#00e676}
+.notif-item.notif-warn{border-left-color:#ff9800}
+.notif-item.notif-danger{border-left-color:#ff4444}
+.notif-time{font-size:9px;color:var(--text-dim);margin-top:3px}
 
-.charts{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:20px;
-margin-bottom:20px;
-}
+/* ─── SLIDER ─── */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer;box-shadow:0 0 8px rgba(0,212,255,.4)}
 
-.chart-box{
-background:#10243b;
-padding:15px;
-border-radius:15px;
-}
-
-/* TABLE */
-
-table{
-width:100%;
-border-collapse:collapse;
-}
-
-th,td{
-padding:10px;
-border:1px solid #1f3c5e;
-text-align:center;
-}
-
-.table-box{
-background:#10243b;
-padding:15px;
-border-radius:15px;
-margin-top:20px;
-}
-
-.buttons{
-margin-top:15px;
-display:flex;
-gap:10px;
-}
-
-button{
-padding:10px 20px;
-border:none;
-cursor:pointer;
-border-radius:8px;
-background:#00dfff;
-font-weight:bold;
-}
-
-.water{
-transition:1s;
-}
-
+/* ─── LOADING ─── */
+#loadingOverlay{position:fixed;inset:0;background:var(--bg-dark);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:.5s}
+#loadingOverlay.hidden{opacity:0;pointer-events:none}
+.load-logo{font-family:var(--font-display);font-size:20px;color:var(--accent);letter-spacing:6px;animation:glitch 3s infinite}
+@keyframes glitch{0%,100%{text-shadow:0 0 10px rgba(0,212,255,.5)}25%{text-shadow:2px 0 0 rgba(255,0,100,.5),-2px 0 0 rgba(0,255,100,.5)}50%{text-shadow:0 0 20px rgba(0,212,255,.8)}}
+.load-bar-wrap{width:200px;height:3px;background:var(--border)}
+.load-bar{height:100%;background:var(--accent);animation:loadBar 1.5s ease forwards}
+@keyframes loadBar{from{width:0}to{width:100%}}
+.load-txt{font-family:var(--font-mono);font-size:10px;color:var(--text-sec);letter-spacing:2px}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="load-logo">AQUA-IQ</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+  <div class="load-txt">INITIALIZING SYSTEM...</div>
+</div>
 
+<!-- LOGIN PAGE -->
 <div id="loginPage">
-
-<div class="login-box">
-
-<h1>SCADA LOGIN</h1>
-
-<input type="text" id="user" placeholder="Username">
-
-<input type="password" id="pass" placeholder="Password">
-
-<button onclick="login()">LOGIN</button>
-
+  <canvas id="loginBg" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:.3"></canvas>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="big">AQUA-IQ SCADA</div>
+      <div class="sub">SMART WATER TANK — FUZZY LOGIC v2.0</div>
+    </div>
+    <div class="login-field">
+      <label>USERNAME</label>
+      <input type="text" id="loginUser" placeholder="admin" value="admin">
+    </div>
+    <div class="login-field">
+      <label>PASSWORD</label>
+      <input type="password" id="loginPass" placeholder="••••••••" value="admin123">
+    </div>
+    <button class="login-btn" onclick="doLogin()">AUTHENTICATE ▶</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-hint">Default: admin / admin123</div>
+  </div>
 </div>
 
-</div>
+<!-- MAIN APP -->
+<div id="mainApp">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="top-logo">AQUA-IQ SCADA</div>
+    <div class="top-status"><span class="dot-live"></span><span style="color:var(--green)">ONLINE</span></div>
+    <div class="top-status" style="margin-left:10px"><span style="color:var(--text-sec)">ESP32</span><span id="espStatus" style="color:var(--green);margin-left:6px">CONNECTED</span></div>
+    <div class="top-status" style="margin-left:10px"><span style="color:var(--text-sec)">MODE</span><span id="modeDisp" style="color:var(--accent);margin-left:6px">FUZZY AUTO</span></div>
+    <div class="top-time" id="topClock">--:--:--</div>
+    <div class="top-date" id="topDate">---</div>
+    <div class="top-user" id="userDisp">👤 admin</div>
+    <button class="top-logout" onclick="doLogout()">LOGOUT</button>
+  </div>
 
-<!-- DASHBOARD -->
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-brand"><span>NAVIGATION MENU</span></div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('scada')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        SCADA Visual
+      </div>
+      <div class="nav-item" onclick="showPage('data')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Data & Grafik
+      </div>
+      <div class="nav-item" onclick="showPage('rekap')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Rekap Data
+      </div>
+      <div class="nav-item" onclick="showPage('alarm')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alarm
+      </div>
+      <div class="nav-sep"></div>
+      <div class="nav-item" onclick="showPage('settings')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Pengaturan
+      </div>
+      <div class="sidebar-footer">v2.0 EDGE IOT<br>ESP32 + FUZZY MAMDANI<br><br id="sbTime"></div>
+    </div>
 
-<div id="dashboard">
+    <!-- CONTENT -->
+    <div class="content">
 
-<div class="header">
-WATER TANK SCADA MONITORING
-</div>
+      <!-- ══ PAGE: DASHBOARD ══ -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-title">
+          <span style="color:var(--accent)">■</span> DASHBOARD — REALTIME MONITORING
+        </div>
 
-<div class="container">
+        <!-- TOP METRICS -->
+        <div class="grid-4" style="margin-bottom:10px">
+          <div class="card" style="--accent-card:#00aaff">
+            <div class="card-title"><span class="dot" style="background:#00aaff"></span>WATER LEVEL</div>
+            <div class="metric-val c-blue" id="m-level">50%</div>
+            <div class="metric-unit">PERSENTASE TANGKI</div>
+            <div class="prog-wrap"><div class="prog-fill prog-blue" id="bar-level" style="width:50%"></div></div>
+            <div class="metric-sub"><span id="m-badge-level" class="badge badge-ok">NORMAL</span></div>
+          </div>
+          <div class="card" style="--accent-card:#00e676">
+            <div class="card-title"><span class="dot" style="background:#00e676"></span>VOLUME</div>
+            <div class="metric-val c-green" id="m-vol">1007 L</div>
+            <div class="metric-unit">LITER</div>
+            <div class="prog-wrap"><div class="prog-fill prog-green" id="bar-vol" style="width:50%"></div></div>
+            <div class="metric-sub c-white" id="m-dist">Jarak: 50 cm</div>
+          </div>
+          <div class="card" style="--accent-card:#ffd600">
+            <div class="card-title"><span class="dot" style="background:#ffd600"></span>SUHU & KELEMBAPAN</div>
+            <div style="display:flex;gap:16px;align-items:baseline">
+              <div><div class="metric-val c-yellow" id="m-temp">33°C</div><div class="metric-unit">SUHU</div></div>
+              <div><div class="metric-val c-blue" id="m-hum">61%</div><div class="metric-unit">RH</div></div>
+            </div>
+          </div>
+          <div class="card" style="--accent-card:#ff4444">
+            <div class="card-title"><span class="dot" id="pump-dot" style="background:#ff4444"></span>POMPA STATUS</div>
+            <div class="metric-val" id="m-pump-spd" style="color:#5a8aa0">0%</div>
+            <div class="metric-unit">KECEPATAN FUZZY</div>
+            <div class="prog-wrap"><div class="prog-fill" id="bar-pump" style="width:0%;background:#ff4444"></div></div>
+            <div class="metric-sub"><span id="m-pump-badge" class="badge badge-off">OFF</span></div>
+          </div>
+        </div>
 
-<div class="sidebar">
+        <!-- SCADA VISUAL + RIGHT PANEL -->
+        <div class="grid-main">
+          <!-- SCADA VISUAL -->
+          <div class="scada-wrap">
+            <div class="scada-label">▸ SCADA VISUAL — TK01 WATER TANK SYSTEM</div>
+            <svg id="scadaSVG" viewBox="0 0 700 310" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="tankBody" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#1a3050"/>
+                  <stop offset="40%" stop-color="#0d2040"/>
+                  <stop offset="100%" stop-color="#071525"/>
+                </linearGradient>
+                <linearGradient id="tankShine" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08"/>
+                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="waterFillG" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00b4d8" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="#023e8a" stop-opacity="1"/>
+                </linearGradient>
+                <linearGradient id="srcWaterG" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0077b6"/>
+                  <stop offset="100%" stop-color="#023e8a"/>
+                </linearGradient>
+                <linearGradient id="pumpBodyG" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2a4060"/>
+                  <stop offset="100%" stop-color="#0d2040"/>
+                </linearGradient>
+                <clipPath id="tankClip"><rect id="tankClipRect" x="242" y="42" width="216" height="228"/></clipPath>
+                <clipPath id="srcClip"><rect x="40" y="42" width="60" height="200"/></clipPath>
+                <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                <marker id="arrowB" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#00aaff" opacity="0.6"/></marker>
+              </defs>
 
-<ul>
-<li>🏠 Dashboard</li>
-<li>🛢 Monitoring</li>
-<li>📊 Analytics</li>
-<li>📋 Reports</li>
-<li>⚙ Settings</li>
-<li onclick="logout()">🚪 Logout</li>
-</ul>
+              <!-- BACKGROUND GRID -->
+              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0d2040" stroke-width="0.5"/>
+              </pattern>
+              <rect width="700" height="310" fill="url(#grid)" opacity="0.3"/>
 
-</div>
+              <!-- ─── SOURCE TANK ─── -->
+              <!-- Tank body ellipse top -->
+              <ellipse cx="70" cy="45" rx="30" ry="8" fill="#1a3050" stroke="#2a4a6a" stroke-width="1.5"/>
+              <!-- Tank cylinder -->
+              <rect x="40" y="45" width="60" height="200" fill="url(#tankBody)" stroke="#2a4a6a" stroke-width="1.5"/>
+              <!-- Water inside source -->
+              <rect id="srcWaterFill" x="41" y="145" width="58" height="100" fill="url(#srcWaterG)" clip-path="url(#srcClip)" opacity="0.85"/>
+              <!-- Tank body ellipse bottom -->
+              <ellipse cx="70" cy="245" rx="30" ry="8" fill="#071525" stroke="#2a4a6a" stroke-width="1.5"/>
+              <!-- Shine -->
+              <rect x="40" y="45" width="18" height="200" fill="url(#tankShine)"/>
+              <!-- Scale marks -->
+              <line x1="38" y1="65" x2="43" y2="65" stroke="#2a4a6a" stroke-width="1"/><text x="34" y="68" fill="#2a4a6a" font-size="7" text-anchor="end" font-family="monospace">100</text>
+              <line x1="38" y1="95" x2="43" y2="95" stroke="#2a4a6a" stroke-width="1"/><text x="34" y="98" fill="#2a4a6a" font-size="7" text-anchor="end" font-family="monospace">75</text>
+              <line x1="38" y1="145" x2="43" y2="145" stroke="#2a4a6a" stroke-width="1"/><text x="34" y="148" fill="#2a4a6a" font-size="7" text-anchor="end" font-family="monospace">50</text>
+              <line x1="38" y1="195" x2="43" y2="195" stroke="#2a4a6a" stroke-width="1"/><text x="34" y="198" fill="#2a4a6a" font-size="7" text-anchor="end" font-family="monospace">25</text>
+              <!-- Label -->
+              <text x="70" y="270" text-anchor="middle" fill="#2a4a6a" font-size="8" font-family="monospace">SUMBER AIR</text>
+              <text x="70" y="280" text-anchor="middle" fill="#2a4a6a" font-size="7" font-family="monospace">SRC-01</text>
 
-<div class="main">
+              <!-- ─── MAIN PIPE (horizontal) ─── -->
+              <!-- Pipe body -->
+              <rect x="100" y="228" width="142" height="14" rx="7" fill="#1a3050" stroke="#2a4a6a" stroke-width="1.5"/>
+              <!-- Flow animation -->
+              <rect id="flowPipe1" x="100" y="230" width="142" height="10" rx="5" fill="none" stroke="#00aaff" stroke-width="2" stroke-dasharray="12,8" opacity="0">
+                <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.5s" repeatCount="indefinite"/>
+              </rect>
+              <!-- Pipe connectors -->
+              <rect x="98" y="224" width="8" height="22" rx="2" fill="#2a4a6a"/>
+              <rect x="232" y="224" width="8" height="22" rx="2" fill="#2a4a6a"/>
+              <!-- Flow direction arrow -->
+              <text id="flowArrow" x="170" y="238" text-anchor="middle" fill="#00aaff" font-size="10" font-family="monospace" opacity="0">→→→</text>
 
-<!-- PROCESS -->
+              <!-- ─── PUMP 01 ─── -->
+              <!-- Pump housing -->
+              <ellipse cx="175" cy="260" rx="38" ry="38" fill="url(#pumpBodyG)" stroke="#2a4a6a" stroke-width="2"/>
+              <ellipse cx="175" cy="260" rx="28" ry="28" fill="#0a1a2e" stroke="#1a3050" stroke-width="1.5"/>
+              <!-- Pump fan blades -->
+              <g id="pumpFan1" transform="translate(175,260)">
+                <ellipse cx="0" cy="-16" rx="6" ry="12" fill="#1a3a5a" rx="3"/>
+                <ellipse cx="0" cy="-16" rx="6" ry="12" fill="#1a3a5a" transform="rotate(120)"/>
+                <ellipse cx="0" cy="-16" rx="6" ry="12" fill="#1a3a5a" transform="rotate(240)"/>
+                <circle cx="0" cy="0" r="6" fill="#2a4a6a" stroke="#1a3a5a" stroke-width="1"/>
+                <circle cx="0" cy="0" r="2" fill="#3a5a7a"/>
+              </g>
+              <!-- Pump ring glow -->
+              <ellipse id="pumpGlow1" cx="175" cy="260" rx="38" ry="38" fill="none" stroke="#00aaff" stroke-width="1.5" opacity="0"/>
+              <!-- Pipe connecting pump to main pipe -->
+              <rect x="168" y="222" width="14" height="38" fill="#1a3050" stroke="#2a4a6a" stroke-width="1"/>
+              <!-- Pump labels -->
+              <text x="175" y="307" text-anchor="middle" fill="#5a8aa0" font-size="9" font-family="monospace" letter-spacing="1">PUMP 01</text>
+              <text id="p1stat" x="175" y="317" text-anchor="middle" fill="#5a8aa0" font-size="8" font-family="monospace">OFF</text>
 
-<div class="process">
+              <!-- ─── VALVE ─── -->
+              <rect x="230" y="222" width="22" height="18" rx="3" fill="#1a3050" stroke="#2a4a6a" stroke-width="1.5"/>
+              <polygon id="valveFill" points="235,225 252,230 235,235" fill="#2a4a6a"/>
+              <polygon points="251,225 234,230 251,235" fill="#1a3050" stroke="#2a4a6a" stroke-width="1"/>
+              <line x1="241" y1="218" x2="241" y2="222" stroke="#2a4a6a" stroke-width="2"/>
+              <rect x="236" y="214" width="10" height="4" fill="#2a4a6a" rx="1"/>
+              <text x="241" y="211" text-anchor="middle" fill="#5a8aa0" font-size="7" font-family="monospace">VAL.01</text>
+              <text id="valStat" x="241" y="248" text-anchor="middle" fill="#ff4444" font-size="8" font-family="monospace">CLOSED</text>
 
-<svg viewBox="0 0 1200 300">
+              <!-- ─── MAIN TANK TK01 ─── -->
+              <!-- Tank top ellipse -->
+              <ellipse cx="350" cy="42" rx="108" ry="14" fill="#1a3050" stroke="#2a4a6a" stroke-width="2"/>
+              <!-- Tank body -->
+              <rect x="242" y="42" width="216" height="228" fill="url(#tankBody)" stroke="#2a4a6a" stroke-width="2"/>
+              <!-- Water fill -->
+              <rect id="tankWater" x="243" y="162" width="214" height="108" fill="url(#waterFillG)" clip-path="url(#tankClip)" opacity="0.9"/>
+              <!-- Water surface ripple -->
+              <ellipse id="waterSurface" cx="350" cy="162" rx="107" ry="5" fill="#00b4d8" opacity="0.4">
+                <animate attributeName="rx" values="107;104;107" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0.6;0.4" dur="3s" repeatCount="indefinite"/>
+              </ellipse>
+              <!-- Tank bottom ellipse -->
+              <ellipse cx="350" cy="270" rx="108" ry="14" fill="#071525" stroke="#2a4a6a" stroke-width="2"/>
+              <!-- Shine effect -->
+              <rect x="242" y="42" width="40" height="228" fill="url(#tankShine)"/>
+              <!-- Level scale -->
+              <line x1="240" y1="56" x2="248" y2="56" stroke="#2a4a6a" stroke-width="1"/><text x="236" y="59" fill="#2a4a6a" font-size="8" text-anchor="end" font-family="monospace">100%</text>
+              <line x1="240" y1="113" x2="248" y2="113" stroke="#2a4a6a" stroke-width="1"/><text x="236" y="116" fill="#2a4a6a" font-size="8" text-anchor="end" font-family="monospace">75%</text>
+              <line x1="240" y1="162" x2="248" y2="162" stroke="#2a4a6a" stroke-width="1"/><text x="236" y="165" fill="#2a4a6a" font-size="8" text-anchor="end" font-family="monospace">50%</text>
+              <line x1="240" y1="219" x2="248" y2="219" stroke="#2a4a6a" stroke-width="1"/><text x="236" y="222" fill="#2a4a6a" font-size="8" text-anchor="end" font-family="monospace">25%</text>
+              <!-- Center text -->
+              <text id="tkLevel" x="350" y="165" text-anchor="middle" fill="#00d4ff" font-size="28" font-weight="900" font-family="'Orbitron',monospace">50%</text>
+              <text id="tkVol" x="350" y="184" text-anchor="middle" fill="#5a8aa0" font-size="10" font-family="monospace">1007 L</text>
+              <text id="tkStat" x="350" y="200" text-anchor="middle" fill="#00e676" font-size="9" font-family="monospace" letter-spacing="2">NORMAL</text>
+              <!-- Ultrasonic sensor beam -->
+              <rect x="330" y="30" width="40" height="12" rx="3" fill="#0d2040" stroke="#00aaff" stroke-width="1" opacity="0.7"/>
+              <text x="350" y="39" text-anchor="middle" fill="#00aaff" font-size="7" font-family="monospace">HC-SR04</text>
+              <line id="sensorBeam" x1="350" y1="42" x2="350" y2="162" stroke="#00aaff" stroke-width="0.7" stroke-dasharray="4,4" opacity="0.5"/>
+              <circle id="sensorDot" cx="350" cy="162" r="3" fill="#00aaff" opacity="0.8">
+                <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+              <!-- Tank label -->
+              <text x="350" y="290" text-anchor="middle" fill="#2a4a6a" font-size="9" font-family="monospace" letter-spacing="2">COLLECTION TANK — TK01</text>
 
-<!-- TANK 1 -->
+              <!-- ─── OUTLET PIPE ─── -->
+              <rect x="458" y="228" width="100" height="14" rx="7" fill="#1a3050" stroke="#2a4a6a" stroke-width="1.5"/>
+              <rect x="456" y="224" width="8" height="22" rx="2" fill="#2a4a6a"/>
+              <rect x="552" y="224" width="8" height="22" rx="2" fill="#2a4a6a"/>
 
-<rect x="50" y="30" width="170" height="220"
-fill="#d5d5d5"
-stroke="#888"
-stroke-width="4"
-rx="15"/>
+              <!-- ─── FLOWMETER ─── -->
+              <circle cx="510" cy="220" r="20" fill="#0d2040" stroke="#2a4a6a" stroke-width="2"/>
+              <circle cx="510" cy="220" r="15" fill="#0a1a2e" stroke="#1a3050" stroke-width="1"/>
+              <text x="510" y="217" text-anchor="middle" fill="#00aaff" font-size="9" font-family="monospace" font-weight="bold" id="flowRate">12</text>
+              <text x="510" y="227" text-anchor="middle" fill="#2a4a6a" font-size="6" font-family="monospace">L/min</text>
+              <rect x="505" y="228" width="10" height="12" fill="#1a3050" stroke="#2a4a6a" stroke-width="1"/>
+              <text x="510" y="252" text-anchor="middle" fill="#5a8aa0" font-size="8" font-family="monospace">FLOWMETER</text>
 
-<rect id="tank1"
-x="55"
-y="180"
-width="160"
-height="65"
-fill="#00bfff"
-class="water"/>
+              <!-- ─── ESP32 BOX ─── -->
+              <rect x="570" y="80" width="90" height="60" rx="4" fill="#0d2040" stroke="#00aaff" stroke-width="1.5" opacity="0.8"/>
+              <text x="615" y="97" text-anchor="middle" fill="#00aaff" font-size="9" font-family="monospace" letter-spacing="1">ESP32</text>
+              <rect x="578" y="103" width="64" height="8" rx="2" fill="#0a1520"/>
+              <rect x="578" y="115" width="64" height="8" rx="2" fill="#0a1520"/>
+              <circle cx="582" cy="107" r="2.5" fill="#00aaff" opacity="0.8"><animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/></circle>
+              <circle cx="582" cy="119" r="2.5" fill="#00e676" opacity="0.6"/>
+              <text x="615" y="152" text-anchor="middle" fill="#1a3050" font-size="7" font-family="monospace">EDGE IoT NODE</text>
+              <!-- Connection lines from ESP32 -->
+              <line x1="570" y1="110" x2="460" y2="110" stroke="#00aaff" stroke-width="0.7" stroke-dasharray="4,4" opacity="0.3"/>
+              <line x1="570" y1="120" x2="460" y2="200" stroke="#00e676" stroke-width="0.7" stroke-dasharray="4,4" opacity="0.3"/>
+              <line x1="615" y1="140" x2="615" y2="220" stroke="#1a3050" stroke-width="0.7" stroke-dasharray="3,3" opacity="0.2"/>
 
-<text x="90" y="20" fill="white">
-Tank 1
-</text>
+              <!-- ─── DHT22 ─── -->
+              <rect x="570" y="170" width="90" height="50" rx="4" fill="#0d2040" stroke="#ffd600" stroke-width="1" opacity="0.7"/>
+              <text x="615" y="185" text-anchor="middle" fill="#ffd600" font-size="8" font-family="monospace">DHT22</text>
+              <text x="578" y="200" fill="#5a8aa0" font-size="8" font-family="monospace">T: </text><text id="svgTemp" x="590" y="200" fill="#ffd600" font-size="8" font-family="monospace">33°C</text>
+              <text x="578" y="212" fill="#5a8aa0" font-size="8" font-family="monospace">H: </text><text id="svgHum" x="590" y="212" fill="#00aaff" font-size="8" font-family="monospace">61%</text>
 
-<!-- PIPE -->
+              <!-- ─── RELAY ─── -->
+              <rect x="570" y="238" width="90" height="35" rx="4" fill="#0d2040" stroke="#ff4444" stroke-width="1" opacity="0.7" id="relayBox"/>
+              <text x="615" y="252" text-anchor="middle" fill="#ff4444" font-size="8" font-family="monospace">RELAY</text>
+              <text id="relayTxt" x="615" y="265" text-anchor="middle" fill="#ff4444" font-size="9" font-family="monospace" font-weight="bold">OFF</text>
 
-<line x1="220"
-y1="140"
-x2="400"
-y2="140"
-stroke="#c0c0c0"
-stroke-width="18"/>
+              <!-- ─── PRESSURE GAUGES ─── -->
+              <circle cx="380" cy="30" rx="16" fill="#0d2040" stroke="#2a4a6a" stroke-width="1.5"/>
+              <circle cx="380" cy="30" r="16" fill="#0d2040" stroke="#2a4a6a" stroke-width="1.5"/>
+              <text x="380" y="27" text-anchor="middle" fill="#00aaff" font-size="8" font-family="monospace" id="svgPress">1.2</text>
+              <text x="380" y="36" text-anchor="middle" fill="#2a4a6a" font-size="6" font-family="monospace">bar</text>
+              <line x1="380" y1="46" x2="380" y2="42" stroke="#2a4a6a" stroke-width="1.5"/>
+              <text x="380" y="15" text-anchor="middle" fill="#2a4a6a" font-size="7" font-family="monospace">PRESS.01</text>
 
-<!-- PUMP -->
+              <!-- ─── ALARM INDICATORS ─── -->
+              <rect x="10" y="10" width="80" height="62" rx="3" fill="#0d2040" stroke="#1a3050" stroke-width="1"/>
+              <text x="50" y="23" text-anchor="middle" fill="#5a8aa0" font-size="8" font-family="monospace" letter-spacing="1">ALARM</text>
+              <rect x="14" y="28" width="16" height="10" rx="2" id="almHH" fill="#3a0000"/>
+              <text x="22" y="36" text-anchor="middle" fill="#ff4444" font-size="7" font-family="monospace">HH</text>
+              <rect x="34" y="28" width="16" height="10" rx="2" id="almH" fill="#1a1000"/>
+              <text x="42" y="36" text-anchor="middle" fill="#ff9800" font-size="7" font-family="monospace">H</text>
+              <rect x="54" y="28" width="16" height="10" rx="2" id="almL" fill="#001a0a"/>
+              <text x="62" y="36" text-anchor="middle" fill="#00e676" font-size="7" font-family="monospace">L</text>
+              <rect x="74" y="28" width="14" height="10" rx="2" id="almLL" fill="#1a1000"/>
+              <text x="81" y="36" text-anchor="middle" fill="#ff9800" font-size="7" font-family="monospace">LL</text>
+              <text id="almStatus" x="50" y="56" text-anchor="middle" fill="#00e676" font-size="8" font-family="monospace">OK</text>
+              <text x="50" y="66" text-anchor="middle" fill="#2a4a6a" font-size="7" font-family="monospace">STATUS</text>
 
-<circle id="pump"
-cx="500"
-cy="140"
-r="55"
-fill="#444"/>
+              <!-- FUZZY BAR at bottom -->
+              <text x="242" y="302" fill="#2a4a6a" font-size="8" font-family="monospace">FUZZY OUTPUT:</text>
+              <rect x="340" y="295" width="216" height="10" rx="5" fill="#0d2040"/>
+              <rect id="fuzzyOutputBar" x="340" y="295" width="108" height="10" rx="5" fill="#00aaff" opacity="0.7"/>
+              <text id="fuzzyOutputTxt" x="558" y="304" fill="#00aaff" font-size="9" font-family="monospace">50%</text>
+            </svg>
+          </div>
 
-<text x="485"
-y="150"
-font-size="28"
-fill="white">
-⚙
-</text>
+          <!-- RIGHT PANEL -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- GAUGE LEVEL -->
+            <div class="card">
+              <div class="card-title"><span class="dot"></span>LEVEL GAUGE</div>
+              <div class="gauge-wrap">
+                <canvas id="levelGauge" width="160" height="90"></canvas>
+                <div class="gauge-num" id="gaugeNum">50%</div>
+                <div class="gauge-lbl">WATER LEVEL</div>
+              </div>
+            </div>
 
-<!-- PIPE -->
+            <!-- FUZZY OUTPUT -->
+            <div class="card">
+              <div class="card-title"><span class="dot" style="background:#ffd600"></span>FUZZY LOGIC OUTPUT</div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-sec)">HIMPUNAN</span>
+                <span class="badge badge-ok" id="fzSet">NORMAL</span>
+              </div>
+              <div class="fuzzy-section" id="fuzzyBars"></div>
+              <div style="margin-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-sec)">PUMP SPEED OUTPUT</div>
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent)" id="fzPump">0%</div>
+            </div>
 
-<line x1="555"
-y1="140"
-x2="750"
-y2="140"
-stroke="#c0c0c0"
-stroke-width="18"/>
+            <!-- PUMP CONTROL -->
+            <div class="card">
+              <div class="card-title"><span class="dot" style="background:#ff4444"></span>PUMP CONTROL</div>
+              <div class="pump-ctrl">
+                <div class="pump-row">
+                  <div class="pump-name">PUMP 01</div>
+                  <span class="pump-status c-danger" id="p1ctrl-stat">OFF</span>
+                  <button class="btn-sm btn-on" onclick="manualCtrl(true)">ON</button>
+                  <button class="btn-sm btn-off2" onclick="manualCtrl(false)">OFF</button>
+                </div>
+              </div>
+              <button class="btn-auto" id="btnAuto" onclick="toggleAuto()">⚡ AUTO (FUZZY MODE)</button>
+              <div style="margin-top:8px">
+                <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-sec);margin-bottom:4px">SIMULASI LEVEL AIR</div>
+                <input type="range" min="0" max="100" value="50" id="simSlider" step="1">
+                <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-sec);text-align:center;margin-top:2px">Geser untuk simulasi</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-<!-- FLOWMETER -->
+        <!-- CHARTS ROW -->
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-title"><span class="dot"></span>WATER LEVEL HISTORY</div>
+            <div class="chart-box"><canvas id="chartLevel"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#ffd600"></span>TEMPERATURE HISTORY</div>
+            <div class="chart-box"><canvas id="chartTemp"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#00aaff"></span>HUMIDITY HISTORY</div>
+            <div class="chart-box"><canvas id="chartHum"></canvas></div>
+          </div>
+        </div>
 
-<circle cx="650"
-cy="90"
-r="30"
-fill="#222"/>
+        <!-- SIM BUTTONS -->
+        <div class="sim-bar">
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-sec);align-self:center">SIMULASI:</span>
+          <button class="btn-sim btn-sim-danger" onclick="simLevel(5)">Air Habis (5%)</button>
+          <button class="btn-sim btn-sim-warn" onclick="simLevel(50)">Sedang (50%)</button>
+          <button class="btn-sim btn-sim-ok" onclick="simLevel(95)">Penuh (95%)</button>
+          <button class="btn-sim btn-sim-blue" onclick="simLevel(15)">Kritis (15%)</button>
+        </div>
+      </div>
 
-<text x="630"
-y="95"
-fill="#00ff00">
-FLOW
-</text>
+      <!-- ══ PAGE: SCADA VISUAL ══ -->
+      <div class="page" id="page-scada">
+        <div class="page-title"><span style="color:var(--accent)">■</span> SCADA VISUAL — FULL VIEW</div>
+        <div class="card" style="padding:20px">
+          <svg viewBox="0 0 700 310" style="width:100%">
+            <use href="#scadaSVG"/>
+          </svg>
+          <div style="display:flex;gap:20px;margin-top:16px;flex-wrap:wrap">
+            <div class="card" style="flex:1;min-width:150px;padding:10px">
+              <div class="card-title">SENSOR READINGS</div>
+              <div class="thr-row"><span class="thr-label">Level</span><span class="thr-range c-blue" id="sv-level">50%</span></div>
+              <div class="thr-row"><span class="thr-label">Volume</span><span class="thr-range c-green" id="sv-vol">1007 L</span></div>
+              <div class="thr-row"><span class="thr-label">Suhu</span><span class="thr-range c-yellow" id="sv-temp">33°C</span></div>
+              <div class="thr-row"><span class="thr-label">Kelembapan</span><span class="thr-range c-blue" id="sv-hum">61%</span></div>
+              <div class="thr-row"><span class="thr-label">Jarak</span><span class="thr-range" id="sv-dist">50 cm</span></div>
+            </div>
+            <div class="card" style="flex:1;min-width:150px;padding:10px">
+              <div class="card-title">THRESHOLD CONFIG</div>
+              <div class="thr-row"><span class="thr-label" style="color:#ff4444">KRITIS</span><span class="thr-range">&lt; 20%</span></div>
+              <div class="thr-row"><span class="thr-label" style="color:#ff9800">RENDAH</span><span class="thr-range">20–40%</span></div>
+              <div class="thr-row"><span class="thr-label" style="color:#00e676">NORMAL</span><span class="thr-range">40–70%</span></div>
+              <div class="thr-row"><span class="thr-label" style="color:#00aaff">TINGGI</span><span class="thr-range">70–90%</span></div>
+              <div class="thr-row"><span class="thr-label" style="color:#5a8aa0">PENUH</span><span class="thr-range">&gt; 90%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<!-- PIPE -->
+      <!-- ══ PAGE: DATA & GRAFIK ══ -->
+      <div class="page" id="page-data">
+        <div class="page-title"><span style="color:var(--accent)">■</span> DATA & GRAFIK</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><span class="dot"></span>LEVEL & PUMP SPEED (REALTIME)</div>
+            <div class="chart-box2"><canvas id="chartLevelPump"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#ffd600"></span>SUHU & KELEMBAPAN</div>
+            <div class="chart-box2"><canvas id="chartTempHum"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:#00e676"></span>FUZZY MEMBERSHIP FUNCTION VISUALIZATION</div>
+          <div style="height:160px"><canvas id="chartFuzzy"></canvas></div>
+        </div>
+      </div>
 
-<line x1="750"
-y1="140"
-x2="900"
-y2="140"
-stroke="#c0c0c0"
-stroke-width="18"/>
+      <!-- ══ PAGE: REKAP DATA ══ -->
+      <div class="page" id="page-rekap">
+        <div class="page-title"><span style="color:var(--accent)">■</span> REKAP DATA MONITORING</div>
+        <div class="action-bar">
+          <button class="btn-export btn-csv" onclick="exportCSV()">⬇ EXPORT CSV</button>
+          <button class="btn-export btn-pdf" onclick="exportPDF()">⬇ EXPORT PDF</button>
+          <button class="btn-export btn-clear" onclick="clearData()">✕ CLEAR DATA</button>
+        </div>
+        <div class="rekap-grid">
+          <div class="rekap-card"><div class="rekap-num" id="rk-total">0</div><div class="rekap-lbl">TOTAL DATA</div></div>
+          <div class="rekap-card"><div class="rekap-num c-blue" id="rk-avg">0%</div><div class="rekap-lbl">AVG LEVEL</div></div>
+          <div class="rekap-card"><div class="rekap-num c-danger" id="rk-min">0%</div><div class="rekap-lbl">MIN LEVEL</div></div>
+          <div class="rekap-card"><div class="rekap-num c-green" id="rk-max">0%</div><div class="rekap-lbl">MAX LEVEL</div></div>
+          <div class="rekap-card"><div class="rekap-num c-yellow" id="rk-temp">0°C</div><div class="rekap-lbl">AVG TEMP</div></div>
+          <div class="rekap-card"><div class="rekap-num c-warn" id="rk-alarm">0</div><div class="rekap-lbl">ALARM COUNT</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot"></span>HISTORY TABLE</div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>#</th><th>WAKTU</th><th>LEVEL</th><th>VOLUME</th><th>JARAK</th><th>SUHU</th><th>KELEMBAPAN</th><th>PUMP</th><th>FUZZY</th><th>STATUS</th></tr>
+              </thead>
+              <tbody id="dataTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-<!-- HORIZONTAL TANK -->
+      <!-- ══ PAGE: ALARM ══ -->
+      <div class="page" id="page-alarm">
+        <div class="page-title"><span style="color:var(--accent)">■</span> ALARM & NOTIFIKASI</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#ff4444"></span>ALARM AKTIF</div>
+            <div class="alarm-list" id="alarmList">
+              <div class="alarm-item alarm-ok"><div class="a-dot" style="background:#00e676"></div>System OK — Semua parameter normal</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#ffd600"></span>LOG NOTIFIKASI</div>
+            <div class="notif-list" id="notifList"></div>
+          </div>
+        </div>
+      </div>
 
-<rect x="900"
-y="80"
-width="250"
-height="120"
-rx="60"
-fill="#d5d5d5"
-stroke="#888"
-stroke-width="4"/>
+      <!-- ══ PAGE: SETTINGS ══ -->
+      <div class="page" id="page-settings">
+        <div class="page-title"><span style="color:var(--accent)">■</span> PENGATURAN SISTEM</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><span class="dot"></span>THRESHOLD KONFIGURASI</div>
+            <div class="setting-row"><label>LEVEL KRITIS (%)</label><input class="setting-input" type="number" id="cfg-kritis" value="20" min="0" max="100"></div>
+            <div class="setting-row"><label>LEVEL RENDAH (%)</label><input class="setting-input" type="number" id="cfg-rendah" value="40" min="0" max="100"></div>
+            <div class="setting-row"><label>LEVEL NORMAL (%)</label><input class="setting-input" type="number" id="cfg-normal" value="70" min="0" max="100"></div>
+            <div class="setting-row"><label>LEVEL PENUH (%)</label><input class="setting-input" type="number" id="cfg-penuh" value="90" min="0" max="100"></div>
+            <div class="setting-row"><label>KAPASITAS TANGKI (L)</label><input class="setting-input" type="number" id="cfg-vol" value="2014"></div>
+            <div class="setting-row"><label>TINGGI TANGKI (cm)</label><input class="setting-input" type="number" id="cfg-height" value="100"></div>
+            <button class="btn-auto" style="margin-top:12px" onclick="saveSettings()">💾 SIMPAN PENGATURAN</button>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:#ffd600"></span>SISTEM & KONEKSI</div>
+            <div class="setting-row"><label>INTERVAL UPDATE (ms)</label><input class="setting-input" type="number" id="cfg-interval" value="2000"></div>
+            <div class="setting-row"><label>NOTIFIKASI TELEGRAM</label>
+              <div class="toggle-wrap"><div class="toggle on" id="tgl-telegram" onclick="toggleCfg(this)"></div><span id="tgl-telegram-lbl" style="color:var(--accent)">ON</span></div>
+            </div>
+            <div class="setting-row"><label>AUTO EXPORT DATA</label>
+              <div class="toggle-wrap"><div class="toggle" id="tgl-export" onclick="toggleCfg(this)"></div><span id="tgl-export-lbl" style="color:var(--text-sec)">OFF</span></div>
+            </div>
+            <div class="setting-row"><label>ALARM BUZZER</label>
+              <div class="toggle-wrap"><div class="toggle on" id="tgl-buzzer" onclick="toggleCfg(this)"></div><span id="tgl-buzzer-lbl" style="color:var(--accent)">ON</span></div>
+            </div>
+            <div class="card-title" style="margin-top:12px"><span class="dot" style="background:#00e676"></span>INFO SISTEM</div>
+            <div class="thr-row"><span class="thr-label">Firmware</span><span class="thr-range c-green">v2.0.1</span></div>
+            <div class="thr-row"><span class="thr-label">Metode Fuzzy</span><span class="thr-range">Mamdani</span></div>
+            <div class="thr-row"><span class="thr-label">Defuzzifikasi</span><span class="thr-range">CoG (Center of Gravity)</span></div>
+            <div class="thr-row"><span class="thr-label">Protokol</span><span class="thr-range">WebSocket / MQTT</span></div>
+            <div class="thr-row"><span class="thr-label">Uptime</span><span class="thr-range c-green" id="uptimeDisp">00:00:00</span></div>
+          </div>
+        </div>
+      </div>
 
-<rect id="tank2"
-x="905"
-y="140"
-width="240"
-height="55"
-fill="#00bfff"
-class="water"/>
-
-<text x="980"
-y="60"
-fill="white">
-Tank 2
-</text>
-
-</svg>
-
-</div>
-
-<!-- KPI -->
-
-<div class="cards">
-
-<div class="card">
-Level
-<h2 id="levelValue">0%</h2>
-</div>
-
-<div class="card">
-Temperature
-<h2 id="tempValue">0°C</h2>
-</div>
-
-<div class="card">
-Humidity
-<h2 id="humValue">0%</h2>
-</div>
-
-<div class="card">
-Flow
-<h2 id="flowValue">0 L/min</h2>
-</div>
-
-</div>
-
-<!-- CHART -->
-
-<div class="charts">
-
-<div class="chart-box">
-<canvas id="levelChart"></canvas>
-</div>
-
-<div class="chart-box">
-<canvas id="tempChart"></canvas>
-</div>
-
-</div>
-
-<!-- TABLE -->
-
-<div class="table-box">
-
-<h2>Monitoring Data</h2>
-
-<br>
-
-<table id="dataTable">
-
-<thead>
-<tr>
-<th>Time</th>
-<th>Level</th>
-<th>Temp</th>
-<th>Humidity</th>
-<th>Flow</th>
-</tr>
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-<div class="buttons">
-
-<button onclick="exportExcel()">
-Export Excel
-</button>
-
-<button onclick="exportPDF()">
-Export PDF
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
+    </div><!-- /content -->
+  </div><!-- /layout -->
+</div><!-- /mainApp -->
 
 <script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let level=50,pumpSpeed=0,autoMode=true,manualOn=false;
+let temp=33,hum=61;
+let levelHistory=[],tempHistory=[],humHistory=[],pumpHistory=[],timeLabels=[];
+let dataLog=[],alarmCount=0,notifLog=[];
+let startTime=Date.now(),dataCount=0,angleOffset=0;
+let MAX_VOL=2014,MAX_H=100;
+let charts={};
+let CFG={kritis:20,rendah:40,normal:70,penuh:90};
 
-function login(){
+// ══════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════
+function doLogin(){
+  const u=document.getElementById('loginUser').value;
+  const p=document.getElementById('loginPass').value;
+  if(u==='admin'&&p==='admin123'){
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('mainApp').classList.add('active');
+    document.getElementById('userDisp').textContent='👤 '+u;
+    initApp();
+  } else {
+    document.getElementById('loginErr').textContent='✗ Username atau password salah';
+    setTimeout(()=>document.getElementById('loginErr').textContent='',2000);
+  }
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
-let u=document.getElementById("user").value;
-let p=document.getElementById("pass").value;
-
-if(u==="admin" && p==="admin123"){
-
-document.getElementById("loginPage").style.display="none";
-document.getElementById("dashboard").style.display="block";
-
-}else{
-
-alert("Username atau Password salah");
-
+function doLogout(){
+  document.getElementById('mainApp').classList.remove('active');
+  document.getElementById('loginPage').style.display='flex';
+  document.getElementById('loginPass').value='';
 }
 
+// ══════════════════════════════════════════
+// LOGIN BACKGROUND ANIMATION
+// ══════════════════════════════════════════
+(function(){
+  const cv=document.getElementById('loginBg');
+  const ctx=cv.getContext('2d');
+  function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  const dots=Array.from({length:60},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3}));
+  function frame(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    dots.forEach(d=>{d.x+=d.vx;d.y+=d.vy;if(d.x<0||d.x>cv.width)d.vx*=-1;if(d.y<0||d.y>cv.height)d.vy*=-1;
+      ctx.beginPath();ctx.arc(d.x,d.y,1.5,0,Math.PI*2);ctx.fillStyle='#00aaff';ctx.fill();});
+    dots.forEach((a,i)=>dots.forEach((b,j)=>{if(j<=i)return;const dist=Math.hypot(a.x-b.x,a.y-b.y);if(dist<120){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=`rgba(0,170,255,${.15*(1-dist/120)})`;ctx.lineWidth=.5;ctx.stroke();}}));
+    requestAnimationFrame(frame);
+  }frame();
+})();
+
+// ══════════════════════════════════════════
+// FUZZY LOGIC
+// ══════════════════════════════════════════
+function trap(x,a,b,c,d){if(x<=a||x>=d)return 0;if(x>=b&&x<=c)return 1;if(x<b)return(x-a)/(b-a);return(d-x)/(d-c);}
+function tri(x,a,b,c){if(x<=a||x>=c)return 0;if(x<=b)return(x-a)/(b-a);return(c-x)/(c-b);}
+const MF=[
+  {name:'KRITIS',color:'#ff4444',fn:x=>trap(x,0,0,15,25),out:100},
+  {name:'RENDAH',color:'#ff9800',fn:x=>tri(x,15,30,45),out:80},
+  {name:'NORMAL',color:'#00e676',fn:x=>tri(x,35,55,70),out:50},
+  {name:'TINGGI',color:'#00aaff',fn:x=>tri(x,60,75,88),out:15},
+  {name:'PENUH', color:'#5a8aa0',fn:x=>trap(x,80,90,100,100),out:0},
+];
+function calcFuzzy(lv){
+  const ms=MF.map(m=>({...m,mu:m.fn(lv)}));
+  const num=ms.reduce((s,m)=>s+m.mu*m.out,0);
+  const den=ms.reduce((s,m)=>s+m.mu,0);
+  const pump=den>0?Math.round(num/den):0;
+  const top=ms.reduce((a,b)=>b.mu>a.mu?b:a);
+  const active=ms.filter(m=>m.mu>0.01).length;
+  return{ms,pump,top,active};
 }
 
-function logout(){
-
-location.reload();
-
+// ══════════════════════════════════════════
+// CHART INIT
+// ══════════════════════════════════════════
+function chartDefaults(){return{responsive:true,maintainAspectRatio:false,animation:{duration:0},plugins:{legend:{display:false}},scales:{x:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{family:'Share Tech Mono',size:9},maxTicksLimit:8}},y:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{family:'Share Tech Mono',size:9}}}}}};}
+function mkLine(id,label,color,yMax=100){
+  const ctx=document.getElementById(id);if(!ctx)return null;
+  return new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label,data:[],borderColor:color,backgroundColor:color+'22',borderWidth:1.5,tension:0.3,pointRadius:0,fill:true}]},options:{...chartDefaults(),scales:{x:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9},maxTicksLimit:8}},y:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9}},max:yMax,min:0}}}});
+}
+function mkMulti(id,datasets,yMax=100){
+  const ctx=document.getElementById(id);if(!ctx)return null;
+  return new Chart(ctx,{type:'line',data:{labels:[],datasets},options:{...chartDefaults(),plugins:{legend:{display:true,labels:{color:'#5a8aa0',font:{family:'Share Tech Mono',size:9}}}},scales:{x:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9},maxTicksLimit:8}},y:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9}},max:yMax,min:0}}}});
 }
 
-let labels=[];
-let levelData=[];
-let tempData=[];
-
-const levelChart=new Chart(
-document.getElementById("levelChart"),
-{
-type:'line',
-data:{
-labels:labels,
-datasets:[{
-label:'Level Tank',
-data:levelData
-}]
-}
-}
-);
-
-const tempChart=new Chart(
-document.getElementById("tempChart"),
-{
-type:'line',
-data:{
-labels:labels,
-datasets:[{
-label:'Temperature',
-data:tempData
-}]
-}
-}
-);
-
-let tableData=[];
-
-setInterval(()=>{
-
-let level=Math.floor(Math.random()*100);
-let temp=Math.floor(Math.random()*15)+25;
-let hum=Math.floor(Math.random()*30)+50;
-let flow=Math.floor(Math.random()*50)+10;
-
-document.getElementById("levelValue").innerHTML=level+"%";
-document.getElementById("tempValue").innerHTML=temp+"°C";
-document.getElementById("humValue").innerHTML=hum+"%";
-document.getElementById("flowValue").innerHTML=flow+" L/min";
-
-document.getElementById("tank1")
-.setAttribute("y",250-(level*2));
-
-document.getElementById("tank1")
-.setAttribute("height",level*2);
-
-document.getElementById("tank2")
-.setAttribute("height",level);
-
-document.getElementById("pump")
-.setAttribute(
-"fill",
-level>50 ? "#00ff66":"#444"
-);
-
-let time=new Date().toLocaleTimeString();
-
-labels.push(time);
-levelData.push(level);
-tempData.push(temp);
-
-if(labels.length>10){
-
-labels.shift();
-levelData.shift();
-tempData.shift();
-
+function initCharts(){
+  charts.level=mkLine('chartLevel','Level','#00aaff');
+  charts.temp=mkLine('chartTemp','Suhu','#ffd600',50);
+  charts.hum=mkLine('chartHum','Kelembapan','#00e676');
+  charts.levelPump=mkMulti('chartLevelPump',[
+    {label:'Level %',data:[],borderColor:'#00aaff',backgroundColor:'#00aaff11',borderWidth:1.5,tension:.3,pointRadius:0,fill:true},
+    {label:'Pump %',data:[],borderColor:'#ff4444',backgroundColor:'transparent',borderWidth:1.5,tension:.3,pointRadius:0,fill:false,borderDash:[4,4]},
+  ]);
+  charts.tempHum=mkMulti('chartTempHum',[
+    {label:'Suhu °C',data:[],borderColor:'#ffd600',backgroundColor:'#ffd60011',borderWidth:1.5,tension:.3,pointRadius:0,fill:true},
+    {label:'Kelembapan %',data:[],borderColor:'#00e676',backgroundColor:'transparent',borderWidth:1.5,tension:.3,pointRadius:0,fill:false,borderDash:[4,4]},
+  ]);
+  initFuzzyChart();
 }
 
-levelChart.update();
-tempChart.update();
+function initFuzzyChart(){
+  const ctx=document.getElementById('chartFuzzy');if(!ctx)return;
+  const labels=Array.from({length:101},(_,i)=>i);
+  const datasets=MF.map(m=>({
+    label:m.name,
+    data:labels.map(x=>m.fn(x)),
+    borderColor:m.color,
+    backgroundColor:'transparent',
+    borderWidth:1.5,
+    tension:0,
+    pointRadius:0,
+  }));
+  charts.fuzzy=new Chart(ctx,{type:'line',data:{labels,datasets},options:{...chartDefaults(),plugins:{legend:{display:true,labels:{color:'#5a8aa0',font:{family:'Share Tech Mono',size:9}}}},scales:{x:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9},maxTicksLimit:11,callback:v=>v+'%'}},y:{grid:{color:'#0d2040'},ticks:{color:'#2a4a5a',font:{size:9}},max:1,min:0}}}});
+}
 
-tableData.push({
-time,
-level,
-temp,
-hum,
-flow
+function updateCharts(lbl,lv,t,h,ps){
+  const MAX=60;
+  function push(ch,val1,val2){
+    if(!ch)return;
+    ch.data.labels.push(lbl);
+    ch.data.datasets[0].data.push(val1);
+    if(val2!==undefined&&ch.data.datasets[1])ch.data.datasets[1].data.push(val2);
+    if(ch.data.labels.length>MAX){ch.data.labels.shift();ch.data.datasets.forEach(d=>d.data.shift());}
+    ch.update('none');
+  }
+  push(charts.level,lv);
+  push(charts.temp,t);
+  push(charts.hum,h);
+  push(charts.levelPump,lv,ps);
+  push(charts.tempHum,t,h);
+}
+
+// ══════════════════════════════════════════
+// GAUGE CANVAS
+// ══════════════════════════════════════════
+function drawGauge(lv){
+  const cv=document.getElementById('levelGauge');if(!cv)return;
+  const ctx=cv.getContext('2d');const cx=80,cy=82,r=65;
+  ctx.clearRect(0,0,160,90);
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,0);ctx.strokeStyle='#0d2040';ctx.lineWidth=12;ctx.stroke();
+  const color=lv<20?'#ff4444':lv<40?'#ff9800':lv<70?'#00aaff':lv<90?'#00e676':'#5a8aa0';
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,Math.PI+(lv/100)*Math.PI);ctx.strokeStyle=color;ctx.lineWidth=12;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+}
+
+// ══════════════════════════════════════════
+// PUMP FAN ANIMATION
+// ══════════════════════════════════════════
+function animateFan(running,speed){
+  const fan=document.getElementById('pumpFan1');if(!fan)return;
+  if(running){
+    const step=3+speed*0.05;
+    angleOffset=(angleOffset+step)%360;
+    fan.setAttribute('transform',`translate(175,260) rotate(${angleOffset})`);
+  }
+}
+
+// ══════════════════════════════════════════
+// SCADA SVG UPDATE
+// ══════════════════════════════════════════
+function updateSVG(lv,ps,isOn){
+  const tankH=228,tankTop=42;
+  const wh=Math.round((lv/100)*tankH);
+  const wy=tankTop+tankH-wh;
+  const tw=document.getElementById('tankWater');
+  const clip=document.getElementById('tankClipRect');
+  const surf=document.getElementById('waterSurface');
+  if(tw){tw.setAttribute('y',wy);tw.setAttribute('height',wh);}
+  if(clip){clip.setAttribute('y',wy);clip.setAttribute('height',wh);}
+  if(surf){surf.setAttribute('cy',wy);}
+  const beam=document.getElementById('sensorBeam');
+  if(beam){beam.setAttribute('y2',wy);}
+  const sdot=document.getElementById('sensorDot');
+  if(sdot){sdot.setAttribute('cy',wy);}
+  // Text
+  const vol=Math.round((lv/100)*MAX_VOL);
+  setText('tkLevel',lv+'%');
+  setText('tkVol',vol+' L');
+  const s=getStatus(lv);
+  const tkStat=document.getElementById('tkStat');
+  if(tkStat){tkStat.textContent=s.label;tkStat.setAttribute('fill',s.color);}
+  // Pump ring glow
+  const glow=document.getElementById('pumpGlow1');
+  if(glow){glow.setAttribute('opacity',isOn?'0.6':'0');glow.setAttribute('stroke',isOn?'#00aaff':'#2a4a6a');}
+  // Pump label
+  const pstat=document.getElementById('p1stat');
+  if(pstat){pstat.textContent=isOn?'RUNNING':'OFF';pstat.setAttribute('fill',isOn?'#00aaff':'#5a8aa0');}
+  // Valve
+  const valStat=document.getElementById('valStat');
+  const valFill=document.getElementById('valveFill');
+  if(valStat){valStat.textContent=isOn?'OPEN':'CLOSED';valStat.setAttribute('fill',isOn?'#00e676':'#ff4444');}
+  if(valFill){valFill.setAttribute('fill',isOn?'#00aaff':'#2a4a6a');}
+  // Flow pipe
+  const fp=document.getElementById('flowPipe1');
+  const fa=document.getElementById('flowArrow');
+  if(fp){fp.setAttribute('opacity',isOn?'0.8':'0');}
+  if(fa){fa.setAttribute('opacity',isOn?'0.6':'0');}
+  // Relay
+  const rb=document.getElementById('relayBox');
+  const rt=document.getElementById('relayTxt');
+  if(rb){rb.setAttribute('stroke',isOn?'#00e676':'#ff4444');}
+  if(rt){rt.textContent=isOn?'ON':'OFF';rt.setAttribute('fill',isOn?'#00e676':'#ff4444');}
+  // Alarms
+  const almHH=document.getElementById('almHH');
+  const almH=document.getElementById('almH');
+  const almStat=document.getElementById('almStatus');
+  if(lv>=90){if(almHH)almHH.setAttribute('fill','#7f0000');if(almStat){almStat.textContent='HH';almStat.setAttribute('fill','#ff4444');}}
+  else if(lv<20){if(almH)almH.setAttribute('fill','#3a2000');if(almStat){almStat.textContent='LL';almStat.setAttribute('fill','#ff9800');}}
+  else{if(almHH)almHH.setAttribute('fill','#3a0000');if(almH)almH.setAttribute('fill','#1a1000');if(almStat){almStat.textContent='OK';almStat.setAttribute('fill','#00e676');}}
+  // Fuzzy bar
+  const fb=document.getElementById('fuzzyOutputBar');
+  if(fb)fb.setAttribute('width',Math.round(ps*216/100));
+  setText('fuzzyOutputTxt',ps+'%');
+  // SVG panel values
+  setText('sv-level',lv+'%');setText('sv-vol',vol+' L');
+  setText('sv-temp',temp+'°C');setText('sv-hum',hum+'%');
+  setText('sv-dist',Math.round((1-lv/100)*MAX_H)+' cm');
+  setText('svgTemp',temp+'°C');setText('svgHum',hum+'%');
+  // Flowrate
+  setText('flowRate',isOn?Math.round(8+ps*0.12):0);
+  // Pressure
+  setText('svgPress',(isOn?(1+ps*0.012).toFixed(1):'0.0'));
+  // Source water level visual
+  const srcW=document.getElementById('srcWaterFill');
+  if(srcW){const h=100+Math.round(Math.random()*5);srcW.setAttribute('y',245-h);srcW.setAttribute('height',h);}
+}
+
+// ══════════════════════════════════════════
+// STATUS HELPER
+// ══════════════════════════════════════════
+function getStatus(lv){
+  if(lv<20)return{label:'KRITIS',color:'#ff4444',badge:'badge-danger',cls:'c-danger'};
+  if(lv<40)return{label:'RENDAH',color:'#ff9800',badge:'badge-warn',cls:'c-warn'};
+  if(lv<70)return{label:'NORMAL',color:'#00e676',badge:'badge-ok',cls:'c-green'};
+  if(lv<90)return{label:'TINGGI',color:'#00aaff',badge:'badge-blue',cls:'c-blue'};
+  return{label:'PENUH',color:'#5a8aa0',badge:'badge-off',cls:''};
+}
+
+// ══════════════════════════════════════════
+// MAIN UPDATE
+// ══════════════════════════════════════════
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+
+function updateAll(){
+  const{ms,pump,top}=calcFuzzy(level);
+  const actualPump=autoMode?pump:(manualOn?90:0);
+  pumpSpeed=actualPump;
+  const isOn=actualPump>5;
+  const vol=Math.round((level/100)*MAX_VOL);
+  const dist=Math.round((1-level/100)*MAX_H);
+  const s=getStatus(level);
+
+  // Metric cards
+  setText('m-level',level+'%');
+  document.getElementById('bar-level').style.width=level+'%';
+  const lvlBadge=document.getElementById('m-badge-level');
+  if(lvlBadge){lvlBadge.textContent=s.label;lvlBadge.className='badge '+s.badge;}
+  setText('m-vol',vol+' L');
+  document.getElementById('bar-vol').style.width=level+'%';
+  setText('m-dist','Jarak: '+dist+' cm');
+  setText('m-temp',temp+'°C');
+  setText('m-hum',hum+'%');
+  setText('m-pump-spd',actualPump+'%');
+  const pb=document.getElementById('bar-pump');
+  if(pb){pb.style.width=actualPump+'%';pb.style.background=actualPump>70?'#ff4444':actualPump>40?'#ff9800':'#00aaff';}
+  const pBadge=document.getElementById('m-pump-badge');
+  if(pBadge){if(isOn){pBadge.textContent='RUNNING';pBadge.className='badge badge-ok';}else{pBadge.textContent='OFF';pBadge.className='badge badge-off';}}
+  const pDot=document.getElementById('pump-dot');
+  if(pDot)pDot.style.background=isOn?'#00e676':'#ff4444';
+
+  // Gauge
+  drawGauge(level);
+  setText('gaugeNum',level+'%');
+
+  // Fuzzy bars
+  const fzBars=document.getElementById('fuzzyBars');
+  if(fzBars){
+    fzBars.innerHTML=ms.map(m=>`
+      <div class="fuzzy-row">
+        <span class="fuzzy-name" style="color:${m.color}">${m.name}</span>
+        <div class="fuzzy-bar"><div class="fuzzy-fill" style="width:${Math.round(m.mu*100)}%;background:${m.color}"></div></div>
+        <span class="fuzzy-mu">${(m.mu).toFixed(2)}</span>
+      </div>`).join('');
+  }
+  setText('fzSet',top.name);
+  const fzEl=document.getElementById('fzSet');
+  if(fzEl){fzEl.style.background=top.color+'33';fzEl.style.color=top.color;fzEl.style.borderColor=top.color+'66';}
+  setText('fzPump',actualPump+'%');
+
+  // Pump control text
+  setText('p1ctrl-stat',isOn?'RUNNING':'OFF');
+  const p1s=document.getElementById('p1ctrl-stat');
+  if(p1s)p1s.className='pump-status '+(isOn?'c-green':'c-danger');
+
+  // Mode display
+  setText('modeDisp',autoMode?'FUZZY AUTO':(manualOn?'MANUAL ON':'MANUAL OFF'));
+
+  // SVG
+  updateSVG(level,actualPump,isOn);
+
+  // Fan animation
+  if(isOn)animateFan(true,actualPump);
+
+  // Alarms
+  updateAlarms(level);
+
+  // Auto level simulation
+  if(autoMode){
+    if(isOn)level=Math.min(100,level+actualPump*0.004);
+    else level=Math.max(0,level-0.15);
+    const sl=document.getElementById('simSlider');
+    if(sl)sl.value=Math.round(level);
+  }
+}
+
+// ══════════════════════════════════════════
+// ALARMS
+// ══════════════════════════════════════════
+function updateAlarms(lv){
+  const list=document.getElementById('alarmList');if(!list)return;
+  let alarms=[];
+  if(lv>=90)alarms.push({cls:'alarm-danger',dot:'#ff4444',msg:'HH ALARM — Tangki PENUH, overflow risk!'});
+  else if(lv<20)alarms.push({cls:'alarm-danger',dot:'#ff4444',msg:'LL ALARM — Level KRITIS, pompa darurat!'});
+  else if(lv<40)alarms.push({cls:'alarm-warn',dot:'#ff9800',msg:'L ALARM — Level RENDAH, waspada!'});
+  else alarms.push({cls:'alarm-ok',dot:'#00e676',msg:'System OK — Semua parameter normal'});
+  list.innerHTML=alarms.map(a=>`<div class="alarm-item ${a.cls}"><div class="a-dot" style="background:${a.dot}"></div>${a.msg}</div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// DATA LOGGING
+// ══════════════════════════════════════════
+let ticker=0;
+function tickData(){
+  ticker++;
+  // Temp/hum drift
+  if(ticker%3===0){
+    temp=Math.max(28,Math.min(40,temp+(Math.random()-.48)*0.4));
+    hum=Math.max(50,Math.min(85,hum+(Math.random()-.5)*0.6));
+    setText('svgTemp',Math.round(temp)+'°C');
+    setText('svgHum',Math.round(hum)+'%');
+  }
+  if(ticker%5===0){
+    const now=new Date();
+    const lbl=[now.getHours(),now.getMinutes(),now.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+    updateCharts(lbl,level,Math.round(temp),Math.round(hum),pumpSpeed);
+    // Log row
+    dataCount++;
+    const s=getStatus(level);
+    const row={id:dataCount,time:now.toLocaleDateString('id-ID')+'  '+lbl,level:Math.round(level),vol:Math.round((level/100)*MAX_VOL),dist:Math.round((1-level/100)*MAX_H),temp:Math.round(temp),hum:Math.round(hum),pump:pumpSpeed>5?'ON':'OFF',fuzzy:pumpSpeed,status:s.label};
+    dataLog.unshift(row);
+    if(dataLog.length>200)dataLog.pop();
+    if(level<20||level>=90){alarmCount++;addNotif(s.label,level);}
+    updateRekap();
+    renderTable();
+  }
+}
+
+function addNotif(label,lv){
+  const now=new Date();
+  const msg=lv>=90?'Tangki PENUH — Pompa dimatikan otomatis':lv<20?'Level KRITIS — Pompa diaktifkan darurat':'Level '+label;
+  notifLog.unshift({msg,time:now.toLocaleDateString('id-ID')+' '+now.toLocaleTimeString('id-ID'),cls:lv>=90||lv<20?'notif-danger':'notif-warn'});
+  if(notifLog.length>50)notifLog.pop();
+  renderNotif();
+}
+
+function addNotifInfo(msg){
+  const now=new Date();
+  notifLog.unshift({msg,time:now.toLocaleTimeString('id-ID'),cls:'notif-ok'});
+  renderNotif();
+}
+
+function renderNotif(){
+  const nl=document.getElementById('notifList');if(!nl)return;
+  nl.innerHTML=notifLog.map(n=>`<div class="notif-item ${n.cls}"><div>${n.msg}</div><div class="notif-time">${n.time}</div></div>`).join('');
+}
+
+function updateRekap(){
+  if(!dataLog.length)return;
+  const lvls=dataLog.map(r=>r.level);
+  const avg=Math.round(lvls.reduce((a,b)=>a+b,0)/lvls.length);
+  const temps=dataLog.map(r=>r.temp);
+  const avgT=Math.round(temps.reduce((a,b)=>a+b,0)/temps.length);
+  setText('rk-total',dataCount);
+  setText('rk-avg',avg+'%');
+  setText('rk-min',Math.min(...lvls)+'%');
+  setText('rk-max',Math.max(...lvls)+'%');
+  setText('rk-temp',avgT+'°C');
+  setText('rk-alarm',alarmCount);
+}
+
+function renderTable(){
+  const tb=document.getElementById('dataTableBody');if(!tb)return;
+  const slice=dataLog.slice(0,50);
+  tb.innerHTML=slice.map(r=>{
+    const sc=r.status==='KRITIS'?'style="color:#ff4444"':r.status==='RENDAH'?'style="color:#ff9800"':r.status==='NORMAL'?'style="color:#00e676"':'style="color:#00aaff"';
+    return`<tr><td>${r.id}</td><td>${r.time}</td><td>${r.level}%</td><td>${r.vol} L</td><td>${r.dist} cm</td><td>${r.temp}°C</td><td>${r.hum}%</td><td ${r.pump==='ON'?'style="color:#00e676"':'style="color:#5a8aa0"'}>${r.pump}</td><td>${r.fuzzy}%</td><td ${sc}>${r.status}</td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════
+function exportCSV(){
+  const header='#,Waktu,Level(%),Volume(L),Jarak(cm),Suhu(C),Kelembapan(%),Pompa,Fuzzy(%),Status\n';
+  const rows=dataLog.map(r=>`${r.id},${r.time},${r.level},${r.vol},${r.dist},${r.temp},${r.hum},${r.pump},${r.fuzzy},${r.status}`).join('\n');
+  const blob=new Blob([header+rows],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='smart_water_tank_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  addNotifInfo('Export CSV berhasil — '+dataLog.length+' baris data');
+}
+
+function exportPDF(){
+  const w=window.open('','_blank');
+  const now=new Date().toLocaleString('id-ID');
+  const rows=dataLog.slice(0,100).map(r=>`<tr><td>${r.id}</td><td>${r.time}</td><td>${r.level}%</td><td>${r.vol}L</td><td>${r.dist}cm</td><td>${r.temp}°C</td><td>${r.hum}%</td><td>${r.pump}</td><td>${r.fuzzy}%</td><td>${r.status}</td></tr>`).join('');
+  const lvls=dataLog.map(r=>r.level);
+  const avg=dataLog.length?Math.round(lvls.reduce((a,b)=>a+b,0)/lvls.length):0;
+  w.document.write(`<!DOCTYPE html><html><head><title>Laporan Smart Water Tank</title>
+  <style>body{font-family:Arial;font-size:12px;padding:20px}h1{color:#003366;font-size:18px}h2{color:#005588;font-size:14px;margin-top:20px}
+  table{border-collapse:collapse;width:100%;font-size:10px}th,td{border:1px solid #ccc;padding:4px 6px}th{background:#003366;color:#fff}
+  .stat{display:inline-block;margin:8px;padding:10px 16px;background:#f0f8ff;border:1px solid #ccc;text-align:center;min-width:100px}
+  .stat strong{display:block;font-size:18px;color:#003366}.footer{margin-top:30px;color:#999;font-size:10px;border-top:1px solid #ccc;padding-top:10px}
+  @media print{button{display:none}}</style></head><body>
+  <button onclick="window.print()" style="padding:8px 20px;background:#003366;color:#fff;border:none;cursor:pointer;margin-bottom:16px">🖨 CETAK PDF</button>
+  <h1>LAPORAN MONITORING SMART WATER TANK</h1>
+  <p>Tanggal Cetak: ${now} | Total Data: ${dataCount} | Alarm: ${alarmCount}</p>
+  <h2>RINGKASAN STATISTIK</h2>
+  <div><div class="stat"><strong>${avg}%</strong>Avg Level</div>
+  <div class="stat"><strong>${dataLog.length?Math.min(...lvls):0}%</strong>Min Level</div>
+  <div class="stat"><strong>${dataLog.length?Math.max(...lvls):0}%</strong>Max Level</div>
+  <div class="stat"><strong>${alarmCount}</strong>Total Alarm</div></div>
+  <h2>DATA MONITORING (${Math.min(100,dataLog.length)} Data Terakhir)</h2>
+  <table><thead><tr><th>#</th><th>Waktu</th><th>Level</th><th>Volume</th><th>Jarak</th><th>Suhu</th><th>Kelembapan</th><th>Pompa</th><th>Fuzzy</th><th>Status</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="footer">Smart Water Tank SCADA — Fuzzy Logic Mamdani — ESP32 Edge IoT | Generated: ${now}</div>
+  </body></html>`);w.document.close();
+  addNotifInfo('Export PDF dibuka di tab baru');
+}
+
+function clearData(){
+  if(!confirm('Hapus semua data rekap? Data akan direset.'))return;
+  dataLog=[];dataCount=0;alarmCount=0;notifLog=[];
+  setText('dataTableBody','');updateRekap();renderNotif();
+  addNotifInfo('Data rekap berhasil dihapus');
+}
+
+// ══════════════════════════════════════════
+// CONTROLS
+// ══════════════════════════════════════════
+function manualCtrl(on){
+  autoMode=false;manualOn=on;
+  const btn=document.getElementById('btnAuto');
+  if(btn)btn.classList.remove('active');
+  addNotifInfo('Manual '+(on?'ON':'OFF')+' — Level '+Math.round(level)+'%');
+}
+function toggleAuto(){
+  autoMode=true;manualOn=false;
+  const btn=document.getElementById('btnAuto');
+  if(btn)btn.classList.add('active');
+  addNotifInfo('Mode AUTO FUZZY diaktifkan');
+}
+function simLevel(lv){
+  autoMode=false;level=lv;
+  const sl=document.getElementById('simSlider');if(sl)sl.value=lv;
+  addNotifInfo('Simulasi level: '+lv+'%');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const sl=document.getElementById('simSlider');
+  if(sl)sl.addEventListener('input',e=>{autoMode=false;level=+e.target.value;});
 });
 
-let row=
-`
-<tr>
-<td>${time}</td>
-<td>${level}%</td>
-<td>${temp}</td>
-<td>${hum}</td>
-<td>${flow}</td>
-</tr>
-`;
-
-document.querySelector("#dataTable tbody")
-.insertAdjacentHTML("afterbegin",row);
-
-},3000);
-
-function exportExcel(){
-
-let ws=XLSX.utils.json_to_sheet(tableData);
-
-let wb=XLSX.utils.book_new();
-
-XLSX.utils.book_append_sheet(
-wb,
-ws,
-"Monitoring"
-);
-
-XLSX.writeFile(
-wb,
-"Monitoring.xlsx"
-);
-
+function toggleCfg(el){
+  el.classList.toggle('on');
+  const lbl=document.getElementById(el.id+'-lbl');
+  if(lbl){const on=el.classList.contains('on');lbl.textContent=on?'ON':'OFF';lbl.style.color=on?'var(--accent)':'var(--text-sec)';}
+}
+function saveSettings(){
+  CFG.kritis=+document.getElementById('cfg-kritis').value;
+  CFG.rendah=+document.getElementById('cfg-rendah').value;
+  CFG.normal=+document.getElementById('cfg-normal').value;
+  CFG.penuh=+document.getElementById('cfg-penuh').value;
+  MAX_VOL=+document.getElementById('cfg-vol').value;
+  MAX_H=+document.getElementById('cfg-height').value;
+  addNotifInfo('Pengaturan disimpan');
+  alert('Pengaturan berhasil disimpan!');
 }
 
-async function exportPDF(){
-
-const { jsPDF } = window.jspdf;
-
-const doc=new jsPDF();
-
-doc.text(
-"WATER TANK REPORT",
-20,
-20
-);
-
-doc.save("Report.pdf");
-
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);
+  if(pg)pg.classList.add('active');
+  const nav=document.querySelector(`.nav-item[onclick="showPage('${id}')"]`);
+  if(nav)nav.classList.add('active');
 }
 
+// ══════════════════════════════════════════
+// CLOCK & UPTIME
+// ══════════════════════════════════════════
+function updateClock(){
+  const n=new Date();
+  setText('topClock',[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':'));
+  setText('topDate',n.toLocaleDateString('id-ID',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}));
+  const s=Math.floor((Date.now()-startTime)/1000);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  const up=[h,m,sec].map(x=>String(x).padStart(2,'0')).join(':');
+  setText('uptimeDisp',up);
+  setText('sbTime','');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function initApp(){
+  startTime=Date.now();
+  initCharts();
+  document.getElementById('btnAuto').classList.add('active');
+  setInterval(updateAll,200);
+  setInterval(tickData,1000);
+  setInterval(updateClock,1000);
+  updateClock();updateAll();
+  addNotifInfo('System online — ESP32 terhubung');
+}
+
+// Loading screen
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  },2000);
+});
 </script>
-
 </body>
 </html>
